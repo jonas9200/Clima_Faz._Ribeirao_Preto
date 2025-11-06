@@ -7,13 +7,12 @@ export default function App() {
   const [equipamento, setEquipamento] = useState("EQ1");
 
   useEffect(() => {
-    const carregar = async () => {
-      const url = `/api/series?equipamento=${equipamento}&aggregate=minute`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      setDados(data);
-    };
-    carregar();
+    const baseUrl = import.meta.env.VITE_API_URL || "";
+    const url = `${baseUrl}/api/series?equipamento=${equipamento}`;
+    fetch(url)
+      .then(r => r.json())
+      .then(setDados)
+      .catch(console.error);
   }, [equipamento]);
 
   const labels = dados.map(d => new Date(d.ts).toLocaleString());
@@ -23,45 +22,38 @@ export default function App() {
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h1>🌤️ Dashboard IoT</h1>
-      <label>
-        Equipamento:
+      <h1>🌦️ Dashboard IoT</h1>
+      <div>
+        Equipamento:{" "}
         <input
-          style={{ marginLeft: 8 }}
           value={equipamento}
           onChange={e => setEquipamento(e.target.value)}
         />
-      </label>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 30 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <div>
           <h3>Temperatura</h3>
-          <Line
-            data={{
-              labels,
-              datasets: [{ label: "Temperatura (°C)", data: temperatura, borderColor: "red" }]
-            }}
-          />
+          <Line data={{
+            labels,
+            datasets: [{ label: "Temperatura (°C)", data: temperatura, borderColor: "red" }]
+          }} />
         </div>
         <div>
           <h3>Umidade</h3>
-          <Line
-            data={{
-              labels,
-              datasets: [{ label: "Umidade (%)", data: umidade, borderColor: "blue" }]
-            }}
-          />
+          <Line data={{
+            labels,
+            datasets: [{ label: "Umidade (%)", data: umidade, borderColor: "blue" }]
+          }} />
         </div>
       </div>
 
       <div style={{ marginTop: 30 }}>
         <h3>Chuva</h3>
-        <Bar
-          data={{
-            labels,
-            datasets: [{ label: "Chuva (mm)", data: chuva, backgroundColor: "green" }]
-          }}
-        />
+        <Bar data={{
+          labels,
+          datasets: [{ label: "Chuva (mm)", data: chuva, backgroundColor: "green" }]
+        }} />
       </div>
     </div>
   );
