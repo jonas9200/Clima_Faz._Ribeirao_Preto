@@ -19,10 +19,10 @@ export default function App() {
       .catch((err) => console.error("Erro ao buscar dados:", err));
   }, [equipamento]);
 
-  const labels = dados.map((d) => new Date(d.ts).toLocaleString());
-  const temperatura = dados.map((d) => d.temperatura);
-  const umidade = dados.map((d) => d.umidade);
-  const chuva = dados.map((d) => d.chuva);
+  const labels = dados.map((d) => new Date(d.registro).toLocaleString());
+  const temperatura = dados.map((d) => parseFloat(d.temperatura));
+  const umidade = dados.map((d) => parseFloat(d.umidade));
+  const chuva = dados.map((d) => parseFloat(d.chuva));
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
@@ -46,6 +46,7 @@ export default function App() {
                   label: "Temperatura (°C)",
                   data: temperatura,
                   borderColor: "red",
+                  fill: false,
                 },
               ],
             }}
@@ -61,6 +62,7 @@ export default function App() {
                   label: "Umidade (%)",
                   data: umidade,
                   borderColor: "blue",
+                  fill: false,
                 },
               ],
             }}
