@@ -8,28 +8,35 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
 
+  const baseUrl = import.meta.env.VITE_API_URL || "";
+
   useEffect(() => {
-    const baseUrl =
-      import.meta.env.VITE_API_URL ||
-      "https://iot-dashboard-75bq.onrender.com"; // 👉 troque pela URL do seu backend
+    async function carregar() {
+      setLoading(true);
+      setErro("");
+      try {
+        const url = `${baseUrl}/api/series?equipamento=${encodeURIComponent(
+          equipamento
+        )}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error("Erro ao buscar dados do servidor");
+        const json = await resp.json();
+        setDados(json);
+      } catch (e) {
+        setErro("Falha ao carregar dados. Verifique a API.");
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-    const url = `${baseUrl}/api/series?equipamento=${equipamento}`;
-
-    setLoading(true);
-    setErro("");
-
-    fetch(url)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Erro HTTP: ${r.status}`);
-        return r.json();
-      })
-      .then(setDados)
-      .catch((err) => setErro(err.message))
-      .finally(() => setLoading(false));
+    carregar();
   }, [equipamento]);
 
   const labels = dados.map((d) =>
-    new Date(d.registro).toLocaleString("pt-BR", { hour12: false })
+    new Date(d.registro).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    })
   );
   const temperatura = dados.map((d) => d.temperatura);
   const umidade = dados.map((d) => d.umidade);
@@ -37,9 +44,9 @@ export default function App() {
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h1>🌦️ Dashboard IoT</h1>
+      <h1>🌦️ IoT Dashboard</h1>
 
-      <div>
+      <div style={{ marginBottom: 20 }}>
         <label>
           Equipamento:{" "}
           <input
@@ -49,17 +56,21 @@ export default function App() {
         </label>
       </div>
 
-      {loading && <p>⏳ Carregando dados...</p>}
-      {erro && <p style={{ color: "red" }}>❌ Erro: {erro}</p>}
+      {loading && <p>Carregando dados...</p>}
+      {erro && <p style={{ color: "red" }}>{erro}</p>}
 
-      {!loading && !erro && dados.length > 0 && (
+      {dados.length === 0 && !loading && !erro && (
+        <p>Nenhum dado encontrado para este equipamento.</p>
+      )}
+
+      {dados.length > 0 && (
         <>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: 20,
-              marginTop: 20,
+              marginBottom: 40,
             }}
           >
             <div>
@@ -72,7 +83,7 @@ export default function App() {
                       label: "Temperatura",
                       data: temperatura,
                       borderColor: "red",
-                      fill: false,
+                      tension: 0.2,
                     },
                   ],
                 }}
@@ -89,7 +100,7 @@ export default function App() {
                       label: "Umidade",
                       data: umidade,
                       borderColor: "blue",
-                      fill: false,
+                      tension: 0.2,
                     },
                   ],
                 }}
@@ -97,7 +108,7 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ marginTop: 30 }}>
+          <div>
             <h3>Chuva (mm)</h3>
             <Bar
               data={{
