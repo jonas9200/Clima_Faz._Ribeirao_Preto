@@ -228,13 +228,13 @@ export default function App() {
             }}
           >
             <div>
-              <h3>Temperatura média por hora (°C)</h3>
+              <h3>Temperatura (°C)</h3>
               <Line
                 data={{
                   labels,
                   datasets: [
                     {
-                      label: "Temperatura média (°C)",
+                      label: "Temperatura (°C)",
                       data: temperatura,
                       borderColor: "red",
                       tension: 0.2,
@@ -245,13 +245,13 @@ export default function App() {
             </div>
 
             <div>
-              <h3>Umidade média por hora (%)</h3>
+              <h3>Umidade (%)</h3>
               <Line
                 data={{
                   labels,
                   datasets: [
                     {
-                      label: "Umidade média (%)",
+                      label: "Umidade (%)",
                       data: umidade,
                       borderColor: "blue",
                       tension: 0.2,
