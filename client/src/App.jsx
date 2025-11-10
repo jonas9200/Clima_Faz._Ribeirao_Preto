@@ -5,15 +5,16 @@ import "chart.js/auto";
 export default function App() {
   const [dados, setDados] = useState([]);
   const [equipamento, setEquipamento] = useState("Pluviometro_01");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Lê a URL base da API (Render usa variável de ambiente)
     const baseUrl =
       import.meta.env.VITE_API_URL || "https://iot-dashboard-75bq.onrender.com";
     const url = `${baseUrl}/api/series?equipamento=${equipamento}`;
 
-    console.log("📡 Buscando dados de:", url);
+    console.log("📡 Buscando dados da API:", url);
 
+    setLoading(true);
     fetch(url)
       .then(async (r) => {
         if (!r.ok) throw new Error(`Erro HTTP ${r.status}`);
@@ -24,10 +25,10 @@ export default function App() {
       .catch((err) => {
         console.error("❌ Erro ao buscar dados:", err);
         setDados([]);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [equipamento]);
 
-  // Garante que o campo existe antes de mapear
   const labels = dados.map((d) => new Date(d.registro).toLocaleString());
   const temperatura = dados.map((d) => parseFloat(d.temperatura) || 0);
   const umidade = dados.map((d) => parseFloat(d.umidade) || 0);
@@ -50,8 +51,10 @@ export default function App() {
         />
       </div>
 
-      {dados.length === 0 ? (
+      {loading ? (
         <p style={{ textAlign: "center" }}>Carregando dados...</p>
+      ) : dados.length === 0 ? (
+        <p style={{ textAlign: "center" }}>Nenhum dado encontrado.</p>
       ) : (
         <>
           <div
@@ -72,7 +75,7 @@ export default function App() {
                       label: "Temperatura",
                       data: temperatura,
                       borderColor: "red",
-                      backgroundColor: "rgba(255,0,0,0.1)",
+                      backgroundColor: "rgba(255,0,0,0.2)",
                       tension: 0.3,
                     },
                   ],
@@ -90,7 +93,7 @@ export default function App() {
                       label: "Umidade",
                       data: umidade,
                       borderColor: "blue",
-                      backgroundColor: "rgba(0,0,255,0.1)",
+                      backgroundColor: "rgba(0,0,255,0.2)",
                       tension: 0.3,
                     },
                   ],
