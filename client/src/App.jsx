@@ -46,10 +46,10 @@ export default function App() {
   }, [equipamento]);
 
   const labels = dados.map((d) =>
-    new Date(d.registro).toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
+    new Date(new Date(d.registro).getTime() + 3 * 60 * 60 * 1000).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo"
     })
-  );
+);
   const temperatura = dados.map((d) => d.temperatura);
   const umidade = dados.map((d) => d.umidade);
   const chuva = dados.map((d) => d.chuva);
