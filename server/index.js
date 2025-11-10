@@ -1,59 +1,58 @@
 import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
 import pkg from "pg";
+import cors from "cors";
 
-dotenv.config();
 const { Pool } = pkg;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Cria pool de conexões com o banco PostgreSQL Neon
+// ⚙️ Configuração da conexão com o banco Neon (PostgreSQL)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// Testa a conexão ao iniciar
-pool
-  .connect()
-  .then(() => console.log("✅ Conectado ao banco PostgreSQL Neon!"))
-  .catch((err) => console.error("❌ Erro ao conectar ao banco:", err));
-
-// Endpoint para verificar se o servidor está online
-app.get("/", (req, res) => {
+// ✅ Rota de teste (útil pra Render mostrar que o servidor está vivo)
+app.get("/api", (req, res) => {
   res.send("🚀 API do IoT Dashboard está funcionando!");
 });
 
-// Endpoint principal: retorna dados do equipamento
+// ✅ Rota principal — lê dados da tabela iot.registros
 app.get("/api/series", async (req, res) => {
-  const equipamento = req.query.equipamento;
-
-  if (!equipamento)
-    return res.status(400).json({ erro: "Informe o parâmetro ?equipamento=" });
-
   try {
-    const query = `
-      SELECT 
-        id,
-        registro,
-        equipamento,
-        chuva,
-        temperatura,
-        umidade,
-        criado_em
+    const { equipamento, data_inicial, data_final } = req.query;
+
+    if (!equipamento) {
+      return res.status(400).json({ erro: "Informe o parâmetro equipamento" });
+    }
+
+    let query = `
+      SELECT registro, equipamento, chuva, temperatura, umidade
       FROM iot.registros
       WHERE equipamento = $1
-      ORDER BY registro ASC;
     `;
+    const params = [equipamento];
+    let paramIndex = 2;
 
-    const { rows } = await pool.query(query, [equipamento]);
+    // 🕒 Filtros de data/hora
+    if (data_inicial) {
+      query += ` AND registro >= $${paramIndex++}`;
+      params.push(new Date(data_inicial));
+    }
+    if (data_final) {
+      query += ` AND registro <= $${paramIndex++}`;
+      params.push(new Date(data_final));
+    }
+
+    query += " ORDER BY registro ASC";
+
+    const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
-    console.error("❌ Erro na consulta:", err);
-    res.status(500).json({ erro: "Erro ao consultar o banco de dados" });
+    console.error("❌ Erro ao consultar dados:", err);
+    res.status(500).json({ erro: "Erro interno no servidor" });
   }
 });
 
