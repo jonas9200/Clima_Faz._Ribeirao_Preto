@@ -1,94 +1,171 @@
-import express from "express";
-import cors from "cors";
-import pkg from "pg";
+import { useEffect, useState } from "react";
+import { Line, Bar } from "react-chartjs-2";
+import "chart.js/auto";
 
-const { Pool } = pkg;
-const app = express();
+export default function App() {
+  const [dados, setDados] = useState([]);
+  const [equipamento, setEquipamento] = useState("Pluviometro_01");
+  const [dataInicial, setDataInicial] = useState("");
+  const [dataFinal, setDataFinal] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState("");
 
-app.use(cors());
-app.use(express.json());
+  const baseUrl = import.meta.env.VITE_API_URL || "";
 
-// 🧩 Conexão com o banco Neon (PostgreSQL)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+  async function carregar() {
+    setLoading(true);
+    setErro("");
+    try {
+      const params = new URLSearchParams({ equipamento });
+      if (dataInicial) params.append("data_inicial", dataInicial);
+      if (dataFinal) params.append("data_final", dataFinal);
 
-// ✅ Teste rápido da API
-app.get("/api", (req, res) => {
-  res.send("🚀 API do IoT Dashboard está funcionando!");
-});
+      const url = `${baseUrl}/api/series?${params.toString()}`;
+      console.log("📡 Requisitando:", url);
 
-// ✅ Rota principal: retorna séries de dados do equipamento
-app.get("/api/series", async (req, res) => {
-  try {
-    const { equipamento, data_inicial, data_final } = req.query;
-
-    if (!equipamento) {
-      return res.status(400).json({ erro: "Informe o parâmetro 'equipamento'" });
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro ao buscar dados do servidor");
+      const json = await resp.json();
+      setDados(json);
+    } catch (e) {
+      setErro("Falha ao carregar dados. Verifique a API.");
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-
-    // Monta query base
-    let query = `
-      SELECT registro, equipamento, chuva, temperatura, umidade
-      FROM iot.registros
-      WHERE equipamento = $1
-    `;
-    const params = [equipamento];
-    let paramIndex = 2;
-
-    // 🕒 Aplica filtros de data/hora, se fornecidos
-    if (data_inicial) {
-      query += ` AND registro >= $${paramIndex++}`;
-      params.push(new Date(data_inicial));
-    }
-    if (data_final) {
-      query += ` AND registro <= $${paramIndex++}`;
-      params.push(new Date(data_final));
-    }
-
-    query += " ORDER BY registro ASC";
-
-    // Executa a consulta
-    const { rows } = await pool.query(query, params);
-
-    // 🔄 Mapeia e formata data/hora corretamente
-    const mapped = rows.map((r) => {
-      const dt = new Date(r.registro);
-
-      // Formato ISO UTC
-      const registro_iso = dt.toISOString();
-
-      // Formato local (Brasil)
-      const registro_local = dt.toLocaleString("pt-BR", {
-        timeZone: "America/Sao_Paulo",
-        hour12: false,
-      });
-
-      return {
-        registro_iso,
-        registro_local,
-        equipamento: r.equipamento,
-        temperatura: parseFloat(r.temperatura),
-        umidade: parseFloat(r.umidade),
-        chuva: parseFloat(r.chuva),
-      };
-    });
-
-    res.json(mapped);
-  } catch (err) {
-    console.error("❌ Erro ao consultar dados:", err);
-    res.status(500).json({ erro: "Erro interno no servidor" });
   }
-});
 
-// 🔊 Rota padrão
-app.get("/", (req, res) => {
-  res.send("🌦️ Servidor do IoT Dashboard está online!");
-});
+  function limparFiltro() {
+    setDataInicial("");
+    setDataFinal("");
+    carregar();
+  }
 
-// 🚀 Inicializa servidor
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`✅ Servidor rodando na porta ${PORT}`);
-});
+  useEffect(() => {
+    carregar();
+  }, [equipamento]);
+
+  const labels = dados.map((d) =>
+    new Date(d.registro).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    })
+  );
+  const temperatura = dados.map((d) => d.temperatura);
+  const umidade = dados.map((d) => d.umidade);
+  const chuva = dados.map((d) => d.chuva);
+
+  return (
+    <div style={{ padding: 20, fontFamily: "Arial" }}>
+      <h1>🌦️ IoT Dashboard</h1>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 20,
+          marginBottom: 20,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <label>
+          Equipamento:{" "}
+          <input
+            value={equipamento}
+            onChange={(e) => setEquipamento(e.target.value)}
+          />
+        </label>
+
+        <label>
+          Data inicial:{" "}
+          <input
+            type="datetime-local"
+            value={dataInicial}
+            onChange={(e) => setDataInicial(e.target.value)}
+          />
+        </label>
+
+        <label>
+          Data final:{" "}
+          <input
+            type="datetime-local"
+            value={dataFinal}
+            onChange={(e) => setDataFinal(e.target.value)}
+          />
+        </label>
+
+        <button onClick={carregar}>🔍 Filtrar</button>
+        <button onClick={limparFiltro}>❌ Limpar</button>
+      </div>
+
+      {loading && <p>Carregando dados...</p>}
+      {erro && <p style={{ color: "red" }}>{erro}</p>}
+
+      {dados.length === 0 && !loading && !erro && (
+        <p>Nenhum dado encontrado para este filtro.</p>
+      )}
+
+      {dados.length > 0 && (
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 20,
+              marginBottom: 40,
+            }}
+          >
+            <div>
+              <h3>Temperatura (°C)</h3>
+              <Line
+                data={{
+                  labels,
+                  datasets: [
+                    {
+                      label: "Temperatura",
+                      data: temperatura,
+                      borderColor: "red",
+                      tension: 0.2,
+                    },
+                  ],
+                }}
+              />
+            </div>
+
+            <div>
+              <h3>Umidade (%)</h3>
+              <Line
+                data={{
+                  labels,
+                  datasets: [
+                    {
+                      label: "Umidade",
+                      data: umidade,
+                      borderColor: "blue",
+                      tension: 0.2,
+                    },
+                  ],
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3>Chuva (mm)</h3>
+            <Bar
+              data={{
+                labels,
+                datasets: [
+                  {
+                    label: "Chuva",
+                    data: chuva,
+                    backgroundColor: "green",
+                  },
+                ],
+              }}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
