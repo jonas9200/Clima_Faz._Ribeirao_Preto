@@ -1,63 +1,65 @@
 import express from "express";
-import pkg from "pg";
 import cors from "cors";
-
-const { Pool } = pkg;
+import pg from "pg";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ⚙️ Configuração da conexão com o banco Neon (PostgreSQL)
-const pool = new Pool({
+// Configurações do banco de dados Neon
+const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false }
 });
 
-// ✅ Rota de teste (útil pra Render mostrar que o servidor está vivo)
-app.get("/api", (req, res) => {
+// ✅ Rota principal — apenas para teste
+app.get("/", (req, res) => {
   res.send("🚀 API do IoT Dashboard está funcionando!");
 });
 
-// ✅ Rota principal — lê dados da tabela iot.registros
+// ✅ Rota de dados com filtros opcionais
 app.get("/api/series", async (req, res) => {
+  const { equipamento, data_inicial, data_final } = req.query;
+
   try {
-    const { equipamento, data_inicial, data_final } = req.query;
-
-    if (!equipamento) {
-      return res.status(400).json({ erro: "Informe o parâmetro equipamento" });
-    }
-
     let query = `
       SELECT registro, equipamento, chuva, temperatura, umidade
       FROM iot.registros
-      WHERE equipamento = $1
+      WHERE 1=1
     `;
-    const params = [equipamento];
-    let paramIndex = 2;
+    const params = [];
 
-    // 🕒 Filtros de data/hora
+    // Filtro por equipamento
+    if (equipamento) {
+      params.push(equipamento);
+      query += ` AND equipamento = $${params.length}`;
+    }
+
+    // Filtro por data inicial
     if (data_inicial) {
-      query += ` AND registro >= $${paramIndex++}`;
-      params.push(new Date(data_inicial));
-    }
-    if (data_final) {
-      query += ` AND registro <= $${paramIndex++}`;
-      params.push(new Date(data_final));
+      params.push(data_inicial);
+      query += ` AND registro >= $${params.length}`;
     }
 
+    // Filtro por data final
+    if (data_final) {
+      params.push(data_final);
+      query += ` AND registro <= $${params.length}`;
+    }
+
+    // Ordena por data
     query += " ORDER BY registro ASC";
 
     const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
-    console.error("❌ Erro ao consultar dados:", err);
+    console.error("Erro ao consultar o banco:", err);
     res.status(500).json({ erro: "Erro interno no servidor" });
   }
 });
 
-// 🚀 Inicializa o servidor
+// ✅ Porta dinâmica para o Render
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`✅ Servidor rodando na porta ${PORT}`);
+  console.log(`🌐 Servidor rodando na porta ${PORT}`);
 });
