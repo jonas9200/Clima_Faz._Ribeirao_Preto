@@ -9,16 +9,36 @@ export default function App() {
   const [dataFinal, setDataFinal] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
+  const [periodo, setPeriodo] = useState(""); // 👈 novo filtro rápido
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
-  async function carregar() {
+  // Função para calcular datas baseadas no período rápido
+  function calcularPeriodoRapido(p) {
+    const agora = new Date();
+    const final = agora.toISOString().slice(0, 19);
+    const inicio = new Date(agora);
+
+    if (p === "24h") inicio.setHours(inicio.getHours() - 24);
+    if (p === "7d") inicio.setDate(inicio.getDate() - 7);
+    if (p === "30d") inicio.setDate(inicio.getDate() - 30);
+
+    const inicioISO = inicio.toISOString().slice(0, 19);
+
+    setDataInicial(inicioISO);
+    setDataFinal(final);
+    setPeriodo(p);
+
+    carregar(inicioISO, final);
+  }
+
+  async function carregar(inicial = dataInicial, final = dataFinal) {
     setLoading(true);
     setErro("");
     try {
       const params = new URLSearchParams({ equipamento });
-      if (dataInicial) params.append("data_inicial", dataInicial);
-      if (dataFinal) params.append("data_final", dataFinal);
+      if (inicial) params.append("data_inicial", inicial);
+      if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
       console.log("📡 Requisitando:", url);
@@ -38,6 +58,7 @@ export default function App() {
   function limparFiltro() {
     setDataInicial("");
     setDataFinal("");
+    setPeriodo("");
     carregar();
   }
 
@@ -58,13 +79,14 @@ export default function App() {
     <div style={{ padding: 20, fontFamily: "Arial" }}>
       <h1>🌦️ IoT Dashboard</h1>
 
+      {/* 🔧 FILTROS */}
       <div
         style={{
           display: "flex",
-          gap: 20,
-          marginBottom: 20,
-          alignItems: "center",
           flexWrap: "wrap",
+          gap: 15,
+          alignItems: "center",
+          marginBottom: 20,
         }}
       >
         <label>
@@ -93,17 +115,50 @@ export default function App() {
           />
         </label>
 
-        <button onClick={carregar}>🔍 Filtrar</button>
+        <button onClick={() => carregar()}>🔍 Filtrar</button>
         <button onClick={limparFiltro}>❌ Limpar</button>
+      </div>
+
+      {/* ⏱️ FILTROS RÁPIDOS */}
+      <div style={{ marginBottom: 20 }}>
+        <strong>Período rápido:</strong>{" "}
+        <button
+          onClick={() => calcularPeriodoRapido("24h")}
+          style={{
+            background: periodo === "24h" ? "#ccc" : "",
+            marginLeft: 5,
+          }}
+        >
+          Últimas 24h
+        </button>
+        <button
+          onClick={() => calcularPeriodoRapido("7d")}
+          style={{
+            background: periodo === "7d" ? "#ccc" : "",
+            marginLeft: 5,
+          }}
+        >
+          Última semana
+        </button>
+        <button
+          onClick={() => calcularPeriodoRapido("30d")}
+          style={{
+            background: periodo === "30d" ? "#ccc" : "",
+            marginLeft: 5,
+          }}
+        >
+          Último mês
+        </button>
       </div>
 
       {loading && <p>Carregando dados...</p>}
       {erro && <p style={{ color: "red" }}>{erro}</p>}
 
-      {dados.length === 0 && !loading && !erro && (
+      {!loading && !erro && dados.length === 0 && (
         <p>Nenhum dado encontrado para este filtro.</p>
       )}
 
+      {/* 📊 GRÁFICOS */}
       {dados.length > 0 && (
         <>
           <div
