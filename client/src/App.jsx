@@ -116,63 +116,14 @@ export default function App() {
 
   const agrupados = agruparPorHora(dados);
 
-  // Formatar labels de forma responsiva
-  const formatarLabel = (dataHora, index, total) => {
-    const data = new Date(dataHora);
-    
-    if (isMobile) {
-      // Para mobile: formato mais compacto
-      if (total > 8) {
-        if (index % Math.ceil(total / 6) !== 0 && index !== total - 1) {
-          return '';
-        }
-        return data.toLocaleTimeString('pt-BR', { 
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-      }
-      return data.toLocaleTimeString('pt-BR', { 
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-    
-    // Para desktop
-    if (total > 24) {
-      if (index % Math.ceil(total / 12) !== 0 && index !== total - 1) {
-        return '';
-      }
-      return data.toLocaleDateString('pt-BR', { 
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit'
-      });
-    }
-    
-    if (total <= 12) {
-      return data.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-    
-    return data.toLocaleString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  // Labels simplificados - apenas números sequenciais
+  const labels = agrupados.map((_, index) => `Ponto ${index + 1}`);
 
-  const labels = agrupados.map((d, index) => 
-    formatarLabel(d.hora, index, agrupados.length)
-  );
-  
   const temperatura = agrupados.map((d) => d.temperatura);
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Configurações responsivas dos gráficos
+  // Configurações simplificadas dos gráficos
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -194,6 +145,9 @@ export default function App() {
               hour: '2-digit',
               minute: '2-digit'
             });
+          },
+          label: (context) => {
+            return `${context.dataset.label}: ${context.parsed.y}`;
           }
         }
       }
@@ -201,19 +155,15 @@ export default function App() {
     scales: {
       x: {
         ticks: {
-          maxRotation: isMobile ? 90 : 45,
-          minRotation: isMobile ? 90 : 45,
+          maxRotation: 0,
           autoSkip: true,
-          maxTicksLimit: isMobile ? 6 : 12,
+          maxTicksLimit: isMobile ? 8 : 12,
           font: {
             size: isMobile ? 10 : 12
           }
         },
         grid: {
           display: false
-        },
-        afterFit: (scale) => {
-          scale.height = isMobile ? 80 : 60; // Mais espaço para labels rotacionados
         }
       },
       y: {
@@ -243,10 +193,6 @@ export default function App() {
         beginAtZero: true,
         grid: {
           color: 'rgba(0,0,0,0.1)'
-        },
-        title: {
-          display: true,
-          text: 'mm'
         },
         ticks: {
           font: {
@@ -366,8 +312,9 @@ export default function App() {
     },
     quickFilters: {
       display: "flex",
-      flexDirection: isMobile ? "column" : "column",
+      flexDirection: isMobile ? "column" : "row",
       gap: "10px",
+      flexWrap: "wrap",
     },
     quickFilterButton: {
       padding: "10px 14px",
@@ -376,7 +323,8 @@ export default function App() {
       borderRadius: "6px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       cursor: "pointer",
-      textAlign: "left",
+      textAlign: "center",
+      flex: isMobile ? "1" : "none",
     },
     quickFilterActive: {
       background: "linear-gradient(135deg, #667eea, #764ba2)",
@@ -429,22 +377,17 @@ export default function App() {
       borderRadius: "12px",
       padding: isMobile ? "16px" : "20px",
       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
-      height: isMobile ? "350px" : "400px",
-      overflow: "hidden", // Garante que tudo fique dentro do card
+      height: isMobile ? "300px" : "350px",
     },
     chartHeader: {
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      justifyContent: "space-between",
-      alignItems: isMobile ? "flex-start" : "center",
       marginBottom: "16px",
-      gap: isMobile ? "8px" : "0",
     },
     chartTitle: {
       margin: 0,
       fontSize: isMobile ? "1rem" : "1.1rem",
       fontWeight: "600",
       color: "#333",
+      textAlign: "center",
     },
   };
 
@@ -583,82 +526,84 @@ export default function App() {
             <div style={styles.chartCard}>
               <div style={styles.chartHeader}>
                 <h3 style={styles.chartTitle}>🌡️ Temperatura (°C)</h3>
-                <div style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.9rem" }}>
-                  {agrupados.length} pontos
-                </div>
               </div>
-              <div style={{ height: isMobile ? "280px" : "320px" }}>
-                <Line
-                  data={{
-                    labels,
-                    datasets: [
-                      {
-                        label: "Temperatura (°C)",
-                        data: temperatura,
-                        borderColor: "#ff6b6b",
-                        backgroundColor: "rgba(255, 107, 107, 0.1)",
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                      },
-                    ],
-                  }}
-                  options={chartOptions}
-                />
-              </div>
+              <Line
+                data={{
+                  labels,
+                  datasets: [
+                    {
+                      label: "Temperatura (°C)",
+                      data: temperatura,
+                      borderColor: "#ff6b6b",
+                      backgroundColor: "rgba(255, 107, 107, 0.1)",
+                      borderWidth: 2,
+                      tension: 0.4,
+                      fill: true,
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
             </div>
 
             <div style={styles.chartCard}>
               <div style={styles.chartHeader}>
                 <h3 style={styles.chartTitle}>💧 Umidade (%)</h3>
-                <div style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.9rem" }}>
-                  {agrupados.length} pontos
-                </div>
               </div>
-              <div style={{ height: isMobile ? "280px" : "320px" }}>
-                <Line
-                  data={{
-                    labels,
-                    datasets: [
-                      {
-                        label: "Umidade (%)",
-                        data: umidade,
-                        borderColor: "#4dabf7",
-                        backgroundColor: "rgba(77, 171, 247, 0.1)",
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                      },
-                    ],
-                  }}
-                  options={chartOptions}
-                />
-              </div>
+              <Line
+                data={{
+                  labels,
+                  datasets: [
+                    {
+                      label: "Umidade (%)",
+                      data: umidade,
+                      borderColor: "#4dabf7",
+                      backgroundColor: "rgba(77, 171, 247, 0.1)",
+                      borderWidth: 2,
+                      tension: 0.4,
+                      fill: true,
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
             </div>
           </div>
 
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>🌧️ Precipitação Acumulada</h3>
-              <div style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.9rem" }}>
-                Total: {totalChuva.toFixed(2)} mm
-              </div>
             </div>
-            <div style={{ height: isMobile ? "280px" : "320px" }}>
-              <Bar
-                data={{
-                  labels,
-                  datasets: [
-                    {
-                      label: "Chuva por hora (mm)",
-                      data: chuva,
-                      backgroundColor: "#51cf66",
-                      borderRadius: 4,
-                    },
-                  ],
-                }}
-                options={barOptions}
-              />
+            <Bar
+              data={{
+                labels,
+                datasets: [
+                  {
+                    label: "Chuva por hora (mm)",
+                    data: chuva,
+                    backgroundColor: "#51cf66",
+                    borderRadius: 4,
+                  },
+                ],
+              }}
+              options={barOptions}
+            />
+          </div>
+
+          {/* 🗓️ LEGENDA DE DATAS */}
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>📅 Período dos Dados</h3>
+            <div style={{ 
+              background: "rgba(102, 126, 234, 0.1)", 
+              padding: "12px", 
+              borderRadius: "8px",
+              fontSize: isMobile ? "0.8rem" : "0.9rem"
+            }}>
+              <div><strong>Data inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
+              <div><strong>Data final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
+              <div style={{ marginTop: "8px", fontStyle: "italic" }}>
+                Passe o mouse sobre os pontos dos gráficos para ver as datas e horas específicas
+              </div>
             </div>
           </div>
         </div>
