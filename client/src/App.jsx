@@ -118,7 +118,7 @@ export default function App() {
 
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
-      <h1>🌦️ IoT Dashboard</h1>
+      <h1>🌦️ AGS Clima</h1>
 
       {/* 🔧 FILTROS */}
       <div
