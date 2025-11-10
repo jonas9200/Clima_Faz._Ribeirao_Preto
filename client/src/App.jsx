@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Line, Bar } from "react-chartjs-2";
-import { Cloud, Droplets, Thermometer, Calendar, Filter, X } from "lucide-react";
 import "chart.js/auto";
 
 export default function App() {
@@ -15,6 +14,7 @@ export default function App() {
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
+  // 📆 Filtros rápidos
   function calcularPeriodoRapido(p) {
     const agora = new Date();
     const final = agora.toISOString().slice(0, 19);
@@ -33,6 +33,7 @@ export default function App() {
     carregar(inicioISO, final);
   }
 
+  // 🔄 Carregar da API
   async function carregar(inicial = dataInicial, final = dataFinal) {
     setLoading(true);
     setErro("");
@@ -70,6 +71,7 @@ export default function App() {
     carregar();
   }, [equipamento]);
 
+  // 🧮 Agrupar por hora
   function agruparPorHora(lista) {
     const mapa = {};
 
@@ -103,276 +105,508 @@ export default function App() {
 
   const agrupados = agruparPorHora(dados);
 
-  const labels = agrupados.map((d) =>
-    new Date(d.hora).toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-    })
+  // Formatar labels de forma inteligente baseado no período
+  const formatarLabel = (dataHora, index, total) => {
+    const data = new Date(dataHora);
+    
+    // Se tiver muitos pontos, mostra menos labels
+    if (total > 24) {
+      // Mostra apenas a cada 6 horas ou a cada 12 pontos
+      if (index % Math.ceil(total / 12) !== 0 && index !== total - 1) {
+        return '';
+      }
+      return data.toLocaleDateString('pt-BR', { 
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit'
+      });
+    }
+    
+    // Para poucos pontos, mostra data completa
+    if (total <= 12) {
+      return data.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Caso médio
+    return data.toLocaleString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const labels = agrupados.map((d, index) => 
+    formatarLabel(d.hora, index, agrupados.length)
   );
+  
   const temperatura = agrupados.map((d) => d.temperatura);
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Calcular estatísticas
-  const tempMedia = temperatura.length > 0 
-    ? (temperatura.reduce((a, b) => a + b, 0) / temperatura.length).toFixed(1)
-    : 0;
-  const umidMedia = umidade.length > 0
-    ? (umidade.reduce((a, b) => a + b, 0) / umidade.length).toFixed(1)
-    : 0;
-
+  // Configurações comuns dos gráficos
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false,
+        display: false
       },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          title: (context) => {
+            const index = context[0].dataIndex;
+            const dataOriginal = agrupados[index];
+            return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+        }
+      }
     },
     scales: {
       x: {
-        grid: {
-          display: false,
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45,
+          autoSkip: true,
+          maxTicksLimit: 12
         },
+        grid: {
+          display: false
+        }
       },
       y: {
+        beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.05)',
+          color: 'rgba(0,0,0,0.1)'
+        }
+      }
+    },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false
+    }
+  };
+
+  const barOptions = {
+    ...chartOptions,
+    scales: {
+      ...chartOptions.scales,
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(0,0,0,0.1)'
         },
-      },
+        title: {
+          display: true,
+          text: 'mm'
+        }
+      }
+    }
+  };
+
+  // Estilos inline
+  const styles = {
+    container: {
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      padding: "20px",
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    },
+    header: {
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "16px",
+      padding: "24px",
+      marginBottom: "24px",
+      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+    },
+    headerContent: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: "20px",
+    },
+    title: {
+      margin: 0,
+      fontSize: "2rem",
+      fontWeight: "700",
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+    },
+    subtitle: {
+      margin: "4px 0 0 0",
+      color: "#666",
+      fontSize: "1rem",
+    },
+    weatherCard: {
+      display: "flex",
+      gap: "32px",
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      padding: "16px 24px",
+      borderRadius: "12px",
+      color: "white",
+    },
+    card: {
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "12px",
+      padding: "20px",
+      marginBottom: "20px",
+      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+    },
+    cardTitle: {
+      margin: "0 0 16px 0",
+      fontSize: "1.2rem",
+      fontWeight: "600",
+      color: "#333",
+    },
+    formGrid: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: "12px",
+      marginBottom: "16px",
+    },
+    formGroup: {
+      display: "flex",
+      flexDirection: "column",
+    },
+    label: {
+      marginBottom: "6px",
+      fontWeight: "500",
+      color: "#555",
+      fontSize: "0.9rem",
+    },
+    input: {
+      padding: "10px",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      fontSize: "0.9rem",
+    },
+    buttonGroup: {
+      display: "flex",
+      gap: "10px",
+    },
+    primaryButton: {
+      padding: "10px 20px",
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      color: "white",
+      border: "none",
+      borderRadius: "6px",
+      fontSize: "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+    },
+    secondaryButton: {
+      padding: "10px 20px",
+      background: "transparent",
+      color: "#666",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      fontSize: "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+    },
+    quickFilters: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "10px",
+    },
+    quickFilterButton: {
+      padding: "10px 14px",
+      background: "transparent",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      fontSize: "0.9rem",
+      cursor: "pointer",
+      textAlign: "left",
+    },
+    quickFilterActive: {
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      color: "white",
+      borderColor: "transparent",
+    },
+    loading: {
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+      padding: "16px",
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "8px",
+      color: "#666",
+      justifyContent: "center",
+    },
+    spinner: {
+      width: "18px",
+      height: "18px",
+      border: "2px solid #e0e0e0",
+      borderTop: "2px solid #667eea",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite",
+    },
+    error: {
+      padding: "14px",
+      background: "rgba(255, 107, 107, 0.1)",
+      border: "1px solid #ff6b6b",
+      borderRadius: "8px",
+      color: "#d63031",
+      textAlign: "center",
+    },
+    emptyState: {
+      textAlign: "center",
+      padding: "40px 20px",
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "12px",
+      color: "#666",
+    },
+    chartsGrid: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "20px",
+      marginBottom: "20px",
+    },
+    chartCard: {
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "12px",
+      padding: "20px",
+      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+      height: "400px", // Aumentei a altura para melhor visualização
+    },
+    chartHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "16px",
+    },
+    chartTitle: {
+      margin: 0,
+      fontSize: "1.1rem",
+      fontWeight: "600",
+      color: "#333",
     },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-              <Cloud className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">AGS Clima</h1>
-              <p className="text-sm text-gray-500">Monitoramento meteorológico em tempo real</p>
-            </div>
+    <div style={styles.container}>
+      {/* 🎯 HEADER */}
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <div>
+            <h1 style={styles.title}>🌦️ AGS Clima</h1>
+            <p style={styles.subtitle}>Monitoramento Meteorológico em Tempo Real</p>
           </div>
+          {!loading && !erro && agrupados.length > 0 && (
+            <div style={styles.weatherCard}>
+              <div>
+                <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>Total de Chuva</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>{totalChuva.toFixed(2)} mm</div>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>Período</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>{agrupados.length} horas</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* 🎛️ PAINEL DE CONTROLE */}
+      <div style={styles.card}>
+        <h3 style={styles.cardTitle}>🔧 Filtros e Configurações</h3>
+        
+        <div style={styles.formGrid}>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Equipamento</label>
+            <input
+              style={styles.input}
+              value={equipamento}
+              onChange={(e) => setEquipamento(e.target.value)}
+              placeholder="Nome do equipamento"
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Data Inicial</label>
+            <input
+              type="datetime-local"
+              style={styles.input}
+              value={dataInicial}
+              onChange={(e) => setDataInicial(e.target.value)}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Data Final</label>
+            <input
+              type="datetime-local"
+              style={styles.input}
+              value={dataFinal}
+              onChange={(e) => setDataFinal(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div style={styles.buttonGroup}>
+          <button style={styles.primaryButton} onClick={() => carregar()}>
+            🔍 Aplicar Filtros
+          </button>
+          <button style={styles.secondaryButton} onClick={limparFiltro}>
+            🗑️ Limpar
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Filtros */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-800">Filtros</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Equipamento
-              </label>
-              <input
-                value={equipamento}
-                onChange={(e) => setEquipamento(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data inicial
-              </label>
-              <input
-                type="datetime-local"
-                value={dataInicial}
-                onChange={(e) => setDataInicial(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data final
-              </label>
-              <input
-                type="datetime-local"
-                value={dataFinal}
-                onChange={(e) => setDataFinal(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => carregar()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium shadow-sm"
-            >
-              Aplicar Filtros
-            </button>
-            <button
-              onClick={limparFiltro}
-              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium flex items-center gap-2"
-            >
-              <X className="w-4 h-4" />
-              Limpar
-            </button>
-          </div>
-
-          {/* Filtros Rápidos */}
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-3">Períodos rápidos:</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: "24h", label: "Últimas 24h" },
-                { key: "7d", label: "Última semana" },
-                { key: "30d", label: "Último mês" },
-              ].map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => calcularPeriodoRapido(p.key)}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
-                    periodo === p.key
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* ⏱️ FILTROS RÁPIDOS */}
+      <div style={styles.card}>
+        <h3 style={styles.cardTitle}>⏱️ Período Rápido</h3>
+        <div style={styles.quickFilters}>
+          <button
+            style={{
+              ...styles.quickFilterButton,
+              ...(periodo === "24h" ? styles.quickFilterActive : {})
+            }}
+            onClick={() => calcularPeriodoRapido("24h")}
+          >
+            ⏰ Últimas 24h
+          </button>
+          <button
+            style={{
+              ...styles.quickFilterButton,
+              ...(periodo === "7d" ? styles.quickFilterActive : {})
+            }}
+            onClick={() => calcularPeriodoRapido("7d")}
+          >
+            📅 Última Semana
+          </button>
+          <button
+            style={{
+              ...styles.quickFilterButton,
+              ...(periodo === "30d" ? styles.quickFilterActive : {})
+            }}
+            onClick={() => calcularPeriodoRapido("30d")}
+          >
+            📊 Último Mês
+          </button>
         </div>
+      </div>
 
-        {/* Loading e Erro */}
+      {/* 📊 STATUS E ERROS */}
+      <div>
         {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <span>Carregando dados meteorológicos...</span>
           </div>
         )}
-
+        
         {erro && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6">
-            {erro}
+          <div style={styles.error}>
+            ⚠️ {erro}
           </div>
         )}
 
         {!loading && !erro && agrupados.length === 0 && (
-          <div className="bg-gray-50 border border-gray-200 text-gray-600 px-6 py-12 rounded-xl text-center">
-            <Cloud className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-lg font-medium">Nenhum dado encontrado</p>
-            <p className="text-sm mt-2">Tente ajustar os filtros ou selecionar outro período</p>
+          <div style={styles.emptyState}>
+            <div style={{ fontSize: "3rem", marginBottom: "10px" }}>📈</div>
+            <h3>Nenhum dado encontrado</h3>
+            <p>Não há dados disponíveis para os filtros selecionados.</p>
           </div>
         )}
-
-        {/* Cards de Resumo */}
-        {!loading && !erro && agrupados.length > 0 && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <Thermometer className="w-8 h-8 opacity-80" />
-                  <span className="text-3xl font-bold">{tempMedia}°C</span>
-                </div>
-                <p className="text-red-100 font-medium">Temperatura Média</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <Droplets className="w-8 h-8 opacity-80" />
-                  <span className="text-3xl font-bold">{umidMedia}%</span>
-                </div>
-                <p className="text-blue-100 font-medium">Umidade Média</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <Cloud className="w-8 h-8 opacity-80" />
-                  <span className="text-3xl font-bold">{totalChuva.toFixed(1)}</span>
-                </div>
-                <p className="text-green-100 font-medium">Total de Chuva (mm)</p>
-              </div>
-            </div>
-
-            {/* Gráficos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Thermometer className="w-5 h-5 text-red-500" />
-                  Temperatura (°C)
-                </h3>
-                <div style={{ height: "300px" }}>
-                  <Line
-                    data={{
-                      labels,
-                      datasets: [
-                        {
-                          label: "Temperatura (°C)",
-                          data: temperatura,
-                          borderColor: "rgb(239, 68, 68)",
-                          backgroundColor: "rgba(239, 68, 68, 0.1)",
-                          tension: 0.4,
-                          fill: true,
-                        },
-                      ],
-                    }}
-                    options={chartOptions}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Droplets className="w-5 h-5 text-blue-500" />
-                  Umidade (%)
-                </h3>
-                <div style={{ height: "300px" }}>
-                  <Line
-                    data={{
-                      labels,
-                      datasets: [
-                        {
-                          label: "Umidade (%)",
-                          data: umidade,
-                          borderColor: "rgb(59, 130, 246)",
-                          backgroundColor: "rgba(59, 130, 246, 0.1)",
-                          tension: 0.4,
-                          fill: true,
-                        },
-                      ],
-                    }}
-                    options={chartOptions}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <Cloud className="w-5 h-5 text-green-500" />
-                Precipitação Acumulada por Hora (mm)
-              </h3>
-              <div style={{ height: "350px" }}>
-                <Bar
-                  data={{
-                    labels,
-                    datasets: [
-                      {
-                        label: "Chuva (mm)",
-                        data: chuva,
-                        backgroundColor: "rgba(34, 197, 94, 0.8)",
-                        borderRadius: 6,
-                      },
-                    ],
-                  }}
-                  options={chartOptions}
-                />
-              </div>
-            </div>
-          </>
-        )}
       </div>
+
+      {/* 📈 GRÁFICOS */}
+      {agrupados.length > 0 && (
+        <div>
+          <div style={styles.chartsGrid}>
+            <div style={styles.chartCard}>
+              <div style={styles.chartHeader}>
+                <h3 style={styles.chartTitle}>🌡️ Temperatura (°C)</h3>
+              </div>
+              <Line
+                data={{
+                  labels,
+                  datasets: [
+                    {
+                      label: "Temperatura (°C)",
+                      data: temperatura,
+                      borderColor: "#ff6b6b",
+                      backgroundColor: "rgba(255, 107, 107, 0.1)",
+                      borderWidth: 2,
+                      tension: 0.4,
+                      fill: true,
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
+            </div>
+
+            <div style={styles.chartCard}>
+              <div style={styles.chartHeader}>
+                <h3 style={styles.chartTitle}>💧 Umidade (%)</h3>
+              </div>
+              <Line
+                data={{
+                  labels,
+                  datasets: [
+                    {
+                      label: "Umidade (%)",
+                      data: umidade,
+                      borderColor: "#4dabf7",
+                      backgroundColor: "rgba(77, 171, 247, 0.1)",
+                      borderWidth: 2,
+                      tension: 0.4,
+                      fill: true,
+                    },
+                  ],
+                }}
+                options={chartOptions}
+              />
+            </div>
+          </div>
+
+          <div style={styles.chartCard}>
+            <div style={styles.chartHeader}>
+              <h3 style={styles.chartTitle}>🌧️ Precipitação Acumulada</h3>
+              <div style={{ color: "#666", fontSize: "0.9rem" }}>
+                Total: {totalChuva.toFixed(2)} mm
+              </div>
+            </div>
+            <Bar
+              data={{
+                labels,
+                datasets: [
+                  {
+                    label: "Chuva por hora (mm)",
+                    data: chuva,
+                    backgroundColor: "#51cf66",
+                    borderRadius: 4,
+                  },
+                ],
+              }}
+              options={barOptions}
+            />
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
