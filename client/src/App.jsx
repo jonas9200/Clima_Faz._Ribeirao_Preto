@@ -9,11 +9,14 @@ export default function App() {
   const [dataFinal, setDataFinal] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
-  const [periodo, setPeriodo] = useState(""); // 👈 novo filtro rápido
+  const [periodo, setPeriodo] = useState("");
+  const [totalChuva, setTotalChuva] = useState(0);
+  const [mediaTemp, setMediaTemp] = useState(0);
+  const [mediaUmid, setMediaUmid] = useState(0);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
-  // Função para calcular datas baseadas no período rápido
+  // 📆 Calcula períodos rápidos (24h, 7d, 30d)
   function calcularPeriodoRapido(p) {
     const agora = new Date();
     const final = agora.toISOString().slice(0, 19);
@@ -32,6 +35,7 @@ export default function App() {
     carregar(inicioISO, final);
   }
 
+  // 🔄 Requisição à API
   async function carregar(inicial = dataInicial, final = dataFinal) {
     setLoading(true);
     setErro("");
@@ -46,7 +50,22 @@ export default function App() {
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados do servidor");
       const json = await resp.json();
-      setDados(json);
+
+      const lista = json.dados || [];
+      setDados(lista);
+      setTotalChuva(json.total_chuva || 0);
+
+      // 📊 Calcula médias
+      if (lista.length > 0) {
+        const somaTemp = lista.reduce((a, d) => a + (Number(d.temperatura) || 0), 0);
+        const somaUmid = lista.reduce((a, d) => a + (Number(d.umidade) || 0), 0);
+        setMediaTemp(somaTemp / lista.length);
+        setMediaUmid(somaUmid / lista.length);
+      } else {
+        setMediaTemp(0);
+        setMediaUmid(0);
+      }
+
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
@@ -55,6 +74,7 @@ export default function App() {
     }
   }
 
+  // 🔁 Limpa filtros
   function limparFiltro() {
     setDataInicial("");
     setDataFinal("");
@@ -66,11 +86,12 @@ export default function App() {
     carregar();
   }, [equipamento]);
 
+  // 🔢 Prepara dados para os gráficos
   const labels = dados.map((d) =>
-    new Date(new Date(d.registro).getTime() + 3 * 60 * 60 * 1000).toLocaleString("pt-BR", {
-      timeZone: "America/Sao_Paulo"
+    new Date(d.registro).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
     })
-);
+  );
   const temperatura = dados.map((d) => d.temperatura);
   const umidade = dados.map((d) => d.umidade);
   const chuva = dados.map((d) => d.chuva);
@@ -158,6 +179,25 @@ export default function App() {
         <p>Nenhum dado encontrado para este filtro.</p>
       )}
 
+      {/* 📈 RESUMO GERAL */}
+      {!loading && !erro && dados.length > 0 && (
+        <div
+          style={{
+            background: "#f2f2f2",
+            padding: 15,
+            borderRadius: 8,
+            marginBottom: 25,
+          }}
+        >
+          <h3>📊 Resumo do Período</h3>
+          <p>
+            <strong>Total de chuva:</strong> {totalChuva.toFixed(2)} mm |
+            <strong> Temperatura média:</strong> {mediaTemp.toFixed(1)} °C |
+            <strong> Umidade média:</strong> {mediaUmid.toFixed(1)} %
+          </p>
+        </div>
+      )}
+
       {/* 📊 GRÁFICOS */}
       {dados.length > 0 && (
         <>
@@ -206,12 +246,13 @@ export default function App() {
 
           <div>
             <h3>Chuva (mm)</h3>
+            <p><strong>Total acumulado:</strong> {totalChuva.toFixed(2)} mm</p>
             <Bar
               data={{
                 labels,
                 datasets: [
                   {
-                    label: "Chuva",
+                    label: "Chuva (mm)",
                     data: chuva,
                     backgroundColor: "green",
                   },
