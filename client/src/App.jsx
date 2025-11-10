@@ -7,7 +7,7 @@ export default function App() {
   const [equipamento, setEquipamento] = useState("Pluviometro_01");
 
   useEffect(() => {
-    const baseUrl = import.meta.env.VITE_API_URL || "";
+    const baseUrl = "https://iot-dashboard-75bq.onrender.com";
     const url = `${baseUrl}/api/series?equipamento=${equipamento}`;
     console.log("Buscando dados de:", url);
     fetch(url)
