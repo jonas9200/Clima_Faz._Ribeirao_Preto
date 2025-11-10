@@ -11,8 +11,19 @@ export default function App() {
   const [erro, setErro] = useState("");
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
+
+  // Detecta se é mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 📆 Filtros rápidos
   function calcularPeriodoRapido(p) {
@@ -105,13 +116,29 @@ export default function App() {
 
   const agrupados = agruparPorHora(dados);
 
-  // Formatar labels de forma inteligente baseado no período
+  // Formatar labels de forma responsiva
   const formatarLabel = (dataHora, index, total) => {
     const data = new Date(dataHora);
     
-    // Se tiver muitos pontos, mostra menos labels
+    if (isMobile) {
+      // Para mobile: formato mais compacto
+      if (total > 8) {
+        if (index % Math.ceil(total / 6) !== 0 && index !== total - 1) {
+          return '';
+        }
+        return data.toLocaleTimeString('pt-BR', { 
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+      return data.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Para desktop
     if (total > 24) {
-      // Mostra apenas a cada 6 horas ou a cada 12 pontos
       if (index % Math.ceil(total / 12) !== 0 && index !== total - 1) {
         return '';
       }
@@ -122,7 +149,6 @@ export default function App() {
       });
     }
     
-    // Para poucos pontos, mostra data completa
     if (total <= 12) {
       return data.toLocaleString('pt-BR', {
         day: '2-digit',
@@ -132,7 +158,6 @@ export default function App() {
       });
     }
     
-    // Caso médio
     return data.toLocaleString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit'
@@ -147,7 +172,7 @@ export default function App() {
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Configurações comuns dos gráficos
+  // Configurações responsivas dos gráficos
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -176,19 +201,30 @@ export default function App() {
     scales: {
       x: {
         ticks: {
-          maxRotation: 45,
-          minRotation: 45,
+          maxRotation: isMobile ? 90 : 45,
+          minRotation: isMobile ? 90 : 45,
           autoSkip: true,
-          maxTicksLimit: 12
+          maxTicksLimit: isMobile ? 6 : 12,
+          font: {
+            size: isMobile ? 10 : 12
+          }
         },
         grid: {
           display: false
+        },
+        afterFit: (scale) => {
+          scale.height = isMobile ? 80 : 60; // Mais espaço para labels rotacionados
         }
       },
       y: {
         beginAtZero: true,
         grid: {
           color: 'rgba(0,0,0,0.1)'
+        },
+        ticks: {
+          font: {
+            size: isMobile ? 10 : 12
+          }
         }
       }
     },
@@ -211,36 +247,41 @@ export default function App() {
         title: {
           display: true,
           text: 'mm'
+        },
+        ticks: {
+          font: {
+            size: isMobile ? 10 : 12
+          }
         }
       }
     }
   };
 
-  // Estilos inline
+  // Estilos responsivos
   const styles = {
     container: {
       minHeight: "100vh",
       background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      padding: "20px",
+      padding: isMobile ? "10px" : "20px",
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     },
     header: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "16px",
-      padding: "24px",
-      marginBottom: "24px",
+      padding: isMobile ? "16px" : "24px",
+      marginBottom: isMobile ? "16px" : "24px",
       boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
     },
     headerContent: {
       display: "flex",
+      flexDirection: isMobile ? "column" : "row",
       justifyContent: "space-between",
-      alignItems: "center",
-      flexWrap: "wrap",
-      gap: "20px",
+      alignItems: isMobile ? "flex-start" : "center",
+      gap: "16px",
     },
     title: {
       margin: 0,
-      fontSize: "2rem",
+      fontSize: isMobile ? "1.5rem" : "2rem",
       fontWeight: "700",
       background: "linear-gradient(135deg, #667eea, #764ba2)",
       WebkitBackgroundClip: "text",
@@ -249,32 +290,34 @@ export default function App() {
     subtitle: {
       margin: "4px 0 0 0",
       color: "#666",
-      fontSize: "1rem",
+      fontSize: isMobile ? "0.9rem" : "1rem",
     },
     weatherCard: {
       display: "flex",
-      gap: "32px",
+      gap: isMobile ? "20px" : "32px",
       background: "linear-gradient(135deg, #667eea, #764ba2)",
-      padding: "16px 24px",
+      padding: isMobile ? "12px 16px" : "16px 24px",
       borderRadius: "12px",
       color: "white",
+      width: isMobile ? "100%" : "auto",
+      justifyContent: isMobile ? "space-around" : "flex-start",
     },
     card: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "12px",
-      padding: "20px",
-      marginBottom: "20px",
+      padding: isMobile ? "16px" : "20px",
+      marginBottom: isMobile ? "16px" : "20px",
       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
     },
     cardTitle: {
       margin: "0 0 16px 0",
-      fontSize: "1.2rem",
+      fontSize: isMobile ? "1.1rem" : "1.2rem",
       fontWeight: "600",
       color: "#333",
     },
     formGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
       gap: "12px",
       marginBottom: "16px",
     },
@@ -286,16 +329,17 @@ export default function App() {
       marginBottom: "6px",
       fontWeight: "500",
       color: "#555",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
     },
     input: {
       padding: "10px",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
     },
     buttonGroup: {
       display: "flex",
+      flexDirection: isMobile ? "column" : "row",
       gap: "10px",
     },
     primaryButton: {
@@ -304,9 +348,10 @@ export default function App() {
       color: "white",
       border: "none",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
+      flex: isMobile ? "1" : "none",
     },
     secondaryButton: {
       padding: "10px 20px",
@@ -314,13 +359,14 @@ export default function App() {
       color: "#666",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
+      flex: isMobile ? "1" : "none",
     },
     quickFilters: {
       display: "flex",
-      flexDirection: "column",
+      flexDirection: isMobile ? "column" : "column",
       gap: "10px",
     },
     quickFilterButton: {
@@ -328,7 +374,7 @@ export default function App() {
       background: "transparent",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       cursor: "pointer",
       textAlign: "left",
     },
@@ -346,6 +392,7 @@ export default function App() {
       borderRadius: "8px",
       color: "#666",
       justifyContent: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
     },
     spinner: {
       width: "18px",
@@ -362,6 +409,7 @@ export default function App() {
       borderRadius: "8px",
       color: "#d63031",
       textAlign: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
     },
     emptyState: {
       textAlign: "center",
@@ -372,26 +420,29 @@ export default function App() {
     },
     chartsGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: "20px",
-      marginBottom: "20px",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+      gap: isMobile ? "16px" : "20px",
+      marginBottom: isMobile ? "16px" : "20px",
     },
     chartCard: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "12px",
-      padding: "20px",
+      padding: isMobile ? "16px" : "20px",
       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
-      height: "400px", // Aumentei a altura para melhor visualização
+      height: isMobile ? "350px" : "400px",
+      overflow: "hidden", // Garante que tudo fique dentro do card
     },
     chartHeader: {
       display: "flex",
+      flexDirection: isMobile ? "column" : "row",
       justifyContent: "space-between",
-      alignItems: "center",
+      alignItems: isMobile ? "flex-start" : "center",
       marginBottom: "16px",
+      gap: isMobile ? "8px" : "0",
     },
     chartTitle: {
       margin: 0,
-      fontSize: "1.1rem",
+      fontSize: isMobile ? "1rem" : "1.1rem",
       fontWeight: "600",
       color: "#333",
     },
@@ -408,13 +459,13 @@ export default function App() {
           </div>
           {!loading && !erro && agrupados.length > 0 && (
             <div style={styles.weatherCard}>
-              <div>
-                <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>Total de Chuva</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>{totalChuva.toFixed(2)} mm</div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: isMobile ? "0.7rem" : "0.8rem", opacity: 0.9 }}>Total de Chuva</div>
+                <div style={{ fontSize: isMobile ? "1.1rem" : "1.3rem", fontWeight: "bold" }}>{totalChuva.toFixed(2)} mm</div>
               </div>
-              <div>
-                <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>Período</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>{agrupados.length} horas</div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: isMobile ? "0.7rem" : "0.8rem", opacity: 0.9 }}>Período</div>
+                <div style={{ fontSize: isMobile ? "1.1rem" : "1.3rem", fontWeight: "bold" }}>{agrupados.length}h</div>
               </div>
             </div>
           )}
@@ -532,71 +583,83 @@ export default function App() {
             <div style={styles.chartCard}>
               <div style={styles.chartHeader}>
                 <h3 style={styles.chartTitle}>🌡️ Temperatura (°C)</h3>
+                <div style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.9rem" }}>
+                  {agrupados.length} pontos
+                </div>
               </div>
-              <Line
-                data={{
-                  labels,
-                  datasets: [
-                    {
-                      label: "Temperatura (°C)",
-                      data: temperatura,
-                      borderColor: "#ff6b6b",
-                      backgroundColor: "rgba(255, 107, 107, 0.1)",
-                      borderWidth: 2,
-                      tension: 0.4,
-                      fill: true,
-                    },
-                  ],
-                }}
-                options={chartOptions}
-              />
+              <div style={{ height: isMobile ? "280px" : "320px" }}>
+                <Line
+                  data={{
+                    labels,
+                    datasets: [
+                      {
+                        label: "Temperatura (°C)",
+                        data: temperatura,
+                        borderColor: "#ff6b6b",
+                        backgroundColor: "rgba(255, 107, 107, 0.1)",
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                      },
+                    ],
+                  }}
+                  options={chartOptions}
+                />
+              </div>
             </div>
 
             <div style={styles.chartCard}>
               <div style={styles.chartHeader}>
                 <h3 style={styles.chartTitle}>💧 Umidade (%)</h3>
+                <div style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.9rem" }}>
+                  {agrupados.length} pontos
+                </div>
               </div>
-              <Line
-                data={{
-                  labels,
-                  datasets: [
-                    {
-                      label: "Umidade (%)",
-                      data: umidade,
-                      borderColor: "#4dabf7",
-                      backgroundColor: "rgba(77, 171, 247, 0.1)",
-                      borderWidth: 2,
-                      tension: 0.4,
-                      fill: true,
-                    },
-                  ],
-                }}
-                options={chartOptions}
-              />
+              <div style={{ height: isMobile ? "280px" : "320px" }}>
+                <Line
+                  data={{
+                    labels,
+                    datasets: [
+                      {
+                        label: "Umidade (%)",
+                        data: umidade,
+                        borderColor: "#4dabf7",
+                        backgroundColor: "rgba(77, 171, 247, 0.1)",
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                      },
+                    ],
+                  }}
+                  options={chartOptions}
+                />
+              </div>
             </div>
           </div>
 
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>🌧️ Precipitação Acumulada</h3>
-              <div style={{ color: "#666", fontSize: "0.9rem" }}>
+              <div style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.9rem" }}>
                 Total: {totalChuva.toFixed(2)} mm
               </div>
             </div>
-            <Bar
-              data={{
-                labels,
-                datasets: [
-                  {
-                    label: "Chuva por hora (mm)",
-                    data: chuva,
-                    backgroundColor: "#51cf66",
-                    borderRadius: 4,
-                  },
-                ],
-              }}
-              options={barOptions}
-            />
+            <div style={{ height: isMobile ? "280px" : "320px" }}>
+              <Bar
+                data={{
+                  labels,
+                  datasets: [
+                    {
+                      label: "Chuva por hora (mm)",
+                      data: chuva,
+                      backgroundColor: "#51cf66",
+                      borderRadius: 4,
+                    },
+                  ],
+                }}
+                options={barOptions}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -605,6 +668,13 @@ export default function App() {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        /* Melhora a experiência em mobile */
+        @media (max-width: 768px) {
+          input[type="datetime-local"] {
+            font-size: 16px; /* Previne zoom no iOS */
+          }
         }
       `}</style>
     </div>
