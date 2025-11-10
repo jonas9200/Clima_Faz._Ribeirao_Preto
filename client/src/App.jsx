@@ -5,31 +5,43 @@ import "chart.js/auto";
 export default function App() {
   const [dados, setDados] = useState([]);
   const [equipamento, setEquipamento] = useState("Pluviometro_01");
+  const [dataInicial, setDataInicial] = useState("");
+  const [dataFinal, setDataFinal] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
-  useEffect(() => {
-    async function carregar() {
-      setLoading(true);
-      setErro("");
-      try {
-        const url = `${baseUrl}/api/series?equipamento=${encodeURIComponent(
-          equipamento
-        )}`;
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error("Erro ao buscar dados do servidor");
-        const json = await resp.json();
-        setDados(json);
-      } catch (e) {
-        setErro("Falha ao carregar dados. Verifique a API.");
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
+  async function carregar() {
+    setLoading(true);
+    setErro("");
+    try {
+      const params = new URLSearchParams({ equipamento });
+      if (dataInicial) params.append("data_inicial", dataInicial);
+      if (dataFinal) params.append("data_final", dataFinal);
 
+      const url = `${baseUrl}/api/series?${params.toString()}`;
+      console.log("📡 Requisitando:", url);
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro ao buscar dados do servidor");
+      const json = await resp.json();
+      setDados(json);
+    } catch (e) {
+      setErro("Falha ao carregar dados. Verifique a API.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function limparFiltro() {
+    setDataInicial("");
+    setDataFinal("");
+    carregar();
+  }
+
+  useEffect(() => {
     carregar();
   }, [equipamento]);
 
@@ -46,7 +58,15 @@ export default function App() {
     <div style={{ padding: 20, fontFamily: "Arial" }}>
       <h1>🌦️ IoT Dashboard</h1>
 
-      <div style={{ marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 20,
+          marginBottom: 20,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <label>
           Equipamento:{" "}
           <input
@@ -54,13 +74,34 @@ export default function App() {
             onChange={(e) => setEquipamento(e.target.value)}
           />
         </label>
+
+        <label>
+          Data inicial:{" "}
+          <input
+            type="datetime-local"
+            value={dataInicial}
+            onChange={(e) => setDataInicial(e.target.value)}
+          />
+        </label>
+
+        <label>
+          Data final:{" "}
+          <input
+            type="datetime-local"
+            value={dataFinal}
+            onChange={(e) => setDataFinal(e.target.value)}
+          />
+        </label>
+
+        <button onClick={carregar}>🔍 Filtrar</button>
+        <button onClick={limparFiltro}>❌ Limpar</button>
       </div>
 
       {loading && <p>Carregando dados...</p>}
       {erro && <p style={{ color: "red" }}>{erro}</p>}
 
       {dados.length === 0 && !loading && !erro && (
-        <p>Nenhum dado encontrado para este equipamento.</p>
+        <p>Nenhum dado encontrado para este filtro.</p>
       )}
 
       {dados.length > 0 && (
