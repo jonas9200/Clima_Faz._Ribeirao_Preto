@@ -56,8 +56,8 @@ app.get("/api/series", async (req, res) => {
   }
 });
 
-// Inicializa o servidor
-const PORT = process.env.PORT || 3000;
+// 🚀 Inicializa o servidor
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`✅ Servidor rodando na porta ${PORT}`);
 });
