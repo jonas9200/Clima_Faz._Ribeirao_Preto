@@ -14,9 +14,6 @@ export default function App() {
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
 
-  // FORÇAR MODO DESKTOP - SEM DETECÇÃO DE MOBILE
-  const isMobile = false;
-
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
   // 🔄 Carregar lista de equipamentos
@@ -35,13 +32,12 @@ export default function App() {
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
-      // Seleciona o primeiro equipamento por padrão, se existir
       if (listaEquipamentos.length > 0 && !equipamento) {
         setEquipamento(listaEquipamentos[0]);
       }
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
-      setEquipamentos(["Pluviometro_01"]); // Fallback
+      setEquipamentos(["Pluviometro_01"]);
     } finally {
       setLoadingEquipamentos(false);
     }
@@ -161,6 +157,7 @@ export default function App() {
     carregar();
   }
 
+  // Carregar dados quando equipamento mudar
   useEffect(() => {
     if (equipamento) {
       carregar();
@@ -224,7 +221,7 @@ export default function App() {
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Configurações dos gráficos sem labels
+  // Configurações dos gráficos
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -239,7 +236,6 @@ export default function App() {
           title: (context) => {
             const index = context[0].dataIndex;
             const dataOriginal = agrupados[index];
-            // Mostra o horário exato do banco
             return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
@@ -268,7 +264,7 @@ export default function App() {
         },
         ticks: {
           font: {
-            size: 12 // Tamanho fixo para desktop
+            size: 12
           },
           callback: function(value) {
             return value.toFixed(2);
@@ -294,7 +290,7 @@ export default function App() {
         },
         ticks: {
           font: {
-            size: 12 // Tamanho fixo para desktop
+            size: 12
           },
           callback: function(value) {
             return value.toFixed(2);
@@ -304,32 +300,32 @@ export default function App() {
     }
   };
 
-  // Estilos FIXOS para desktop
+  // Estilos para desktop
   const styles = {
     container: {
       minHeight: "100vh",
       background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      padding: "20px", // Padding fixo
+      padding: "20px",
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-      minWidth: "1200px", // Largura mínima para desktop
+      minWidth: "1200px",
     },
     header: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "16px",
-      padding: "24px", // Padding fixo
-      marginBottom: "24px", // Margin fixo
+      padding: "24px",
+      marginBottom: "24px",
       boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
     },
     headerContent: {
       display: "flex",
-      flexDirection: "row", // Sempre em linha
+      flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       gap: "16px",
     },
     title: {
       margin: 0,
-      fontSize: "2rem", // Tamanho fixo
+      fontSize: "2rem",
       fontWeight: "700",
       background: "linear-gradient(135deg, #667eea, #764ba2)",
       WebkitBackgroundClip: "text",
@@ -338,34 +334,34 @@ export default function App() {
     subtitle: {
       margin: "4px 0 0 0",
       color: "#666",
-      fontSize: "1rem", // Tamanho fixo
+      fontSize: "1rem",
     },
     weatherCard: {
       display: "flex",
-      gap: "32px", // Gap fixo
+      gap: "32px",
       background: "linear-gradient(135deg, #667eea, #764ba2)",
-      padding: "16px 24px", // Padding fixo
+      padding: "16px 24px",
       borderRadius: "12px",
       color: "white",
-      width: "auto", // Largura automática
-      justifyContent: "flex-start", // Alinhamento fixo
+      width: "auto",
+      justifyContent: "flex-start",
     },
     card: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "12px",
-      padding: "20px", // Padding fixo
-      marginBottom: "20px", // Margin fixo
+      padding: "20px",
+      marginBottom: "20px",
       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
     },
     cardTitle: {
       margin: "0 0 16px 0",
-      fontSize: "1.2rem", // Tamanho fixo
+      fontSize: "1.2rem",
       fontWeight: "600",
       color: "#333",
     },
     formGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr", // Sempre 3 colunas
+      gridTemplateColumns: "1fr 1fr 1fr",
       gap: "12px",
       marginBottom: "16px",
     },
@@ -377,26 +373,26 @@ export default function App() {
       marginBottom: "6px",
       fontWeight: "500",
       color: "#555",
-      fontSize: "0.9rem", // Tamanho fixo
+      fontSize: "0.9rem",
     },
     input: {
       padding: "10px",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem", // Tamanho fixo
+      fontSize: "0.9rem",
       backgroundColor: "white",
     },
     select: {
       padding: "10px",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem", // Tamanho fixo
+      fontSize: "0.9rem",
       backgroundColor: "white",
       cursor: "pointer",
     },
     buttonGroup: {
       display: "flex",
-      flexDirection: "row", // Sempre em linha
+      flexDirection: "row",
       gap: "10px",
     },
     primaryButton: {
@@ -405,10 +401,9 @@ export default function App() {
       color: "white",
       border: "none",
       borderRadius: "6px",
-      fontSize: "0.9rem", // Tamanho fixo
+      fontSize: "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
-      flex: "none", // Sem flex
       transition: "all 0.3s ease",
     },
     secondaryButton: {
@@ -417,15 +412,14 @@ export default function App() {
       color: "#666",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem", // Tamanho fixo
+      fontSize: "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
-      flex: "none", // Sem flex
       transition: "all 0.3s ease",
     },
     quickFilters: {
       display: "flex",
-      flexDirection: "row", // Sempre em linha
+      flexDirection: "row",
       gap: "10px",
       flexWrap: "wrap",
     },
@@ -434,10 +428,9 @@ export default function App() {
       background: "transparent",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem", // Tamanho fixo
+      fontSize: "0.9rem",
       cursor: "pointer",
       textAlign: "center",
-      flex: "none", // Sem flex
       transition: "all 0.3s ease",
     },
     quickFilterActive: {
@@ -454,7 +447,7 @@ export default function App() {
       borderRadius: "8px",
       color: "#666",
       justifyContent: "center",
-      fontSize: "1rem", // Tamanho fixo
+      fontSize: "1rem",
     },
     spinner: {
       width: "18px",
@@ -471,7 +464,7 @@ export default function App() {
       borderRadius: "8px",
       color: "#d63031",
       textAlign: "center",
-      fontSize: "1rem", // Tamanho fixo
+      fontSize: "1rem",
     },
     emptyState: {
       textAlign: "center",
@@ -482,16 +475,16 @@ export default function App() {
     },
     chartsGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr", // Sempre 2 colunas
-      gap: "20px", // Gap fixo
-      marginBottom: "20px", // Margin fixo
+      gridTemplateColumns: "1fr 1fr",
+      gap: "20px",
+      marginBottom: "20px",
     },
     chartCard: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "12px",
-      padding: "20px", // Padding fixo
+      padding: "20px",
       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
-      height: "350px", // Altura fixa
+      height: "350px",
     },
     chartHeader: {
       marginBottom: "16px",
@@ -499,7 +492,7 @@ export default function App() {
     },
     chartTitle: {
       margin: 0,
-      fontSize: "1.1rem", // Tamanho fixo
+      fontSize: "1.1rem",
       fontWeight: "600",
       color: "#333",
     },
@@ -752,7 +745,7 @@ export default function App() {
               background: "rgba(102, 126, 234, 0.1)", 
               padding: "12px", 
               borderRadius: "8px",
-              fontSize: "0.9rem" // Tamanho fixo
+              fontSize: "0.9rem"
             }}>
               {agrupados.length > 0 && (
                 <>
@@ -776,12 +769,10 @@ export default function App() {
           100% { transform: rotate(360deg); }
         }
         
-        /* FORÇAR VIEWPORT DESKTOP */
-        @media (max-width: 768px) {
-          body {
-            min-width: 1200px;
-            overflow-x: auto;
-          }
+        /* Forçar comportamento desktop */
+        html, body {
+          min-width: 1200px;
+          overflow-x: auto;
         }
       `}</style>
     </div>
