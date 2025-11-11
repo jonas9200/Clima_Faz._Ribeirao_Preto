@@ -540,9 +540,9 @@ export default function App() {
           <button
             style={{
               ...styles.quickFilterButton,
-              ...(periodo === "27h" ? styles.quickFilterActive : {})
+              ...(periodo === "24h" ? styles.quickFilterActive : {})
             }}
-            onClick={() => calcularPeriodoRapido("27h")}
+            onClick={() => calcularPeriodoRapido("24h")}
           >
             ⏰ Últimas 24h
           </button>
