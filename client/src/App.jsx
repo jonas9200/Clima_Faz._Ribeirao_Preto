@@ -25,13 +25,26 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Função para converter Local para UTC (para a API)
+  function localToUTC(localDate) {
+    const date = new Date(localDate);
+    // Adiciona o offset do timezone para converter local → UTC
+    const timezoneOffset = date.getTimezoneOffset() * 60000;
+    const utcDate = new Date(date.getTime() + timezoneOffset);
+    return utcDate.toISOString().slice(0, 19);
+  }
+
   // Função para converter UTC para Local (para os gráficos)
   function utcToLocal(utcString) {
     const date = new Date(utcString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
+    // Subtrai o offset do timezone para converter UTC → local
+    const timezoneOffset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - timezoneOffset);
+    
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    const hours = String(localDate.getHours()).padStart(2, '0');
     
     return `${year}-${month}-${day} ${hours}:00`;
   }
@@ -47,30 +60,42 @@ export default function App() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  // 📆 Filtros rápidos
+  // 📆 Filtros rápidos - CORRIGIDO para 24h exatas
   function calcularPeriodoRapido(p) {
     const agora = new Date();
+    const final = new Date(agora);
     const inicio = new Date(agora);
 
-    if (p === "24h") inicio.setHours(inicio.getHours() - 24);
-    if (p === "7d") inicio.setDate(inicio.getDate() - 7);
-    if (p === "30d") inicio.setDate(inicio.getDate() - 30);
+    if (p === "24h") {
+      inicio.setHours(inicio.getHours() - 24);
+    } else if (p === "7d") {
+      inicio.setDate(inicio.getDate() - 7);
+    } else if (p === "30d") {
+      inicio.setDate(inicio.getDate() - 30);
+    }
 
     // Usa horário local para os inputs
     const inicioLocal = toLocalDatetimeString(inicio);
-    const finalLocal = toLocalDatetimeString(agora);
+    const finalLocal = toLocalDatetimeString(final);
+
+    console.log("⏰ Período selecionado:", p);
+    console.log("📅 Início (local):", inicioLocal);
+    console.log("📅 Final (local):", finalLocal);
 
     // Atualiza os estados primeiro
     setDataInicial(inicioLocal);
     setDataFinal(finalLocal);
     setPeriodo(p);
 
-    // Converte para ISO (UTC) para a API
-    const inicioISO = inicio.toISOString().slice(0, 19);
-    const finalISO = agora.toISOString().slice(0, 19);
+    // Converte para UTC corretamente para a API
+    const inicioUTC = localToUTC(inicioLocal);
+    const finalUTC = localToUTC(finalLocal);
+    
+    console.log("🌐 Início (UTC):", inicioUTC);
+    console.log("🌐 Final (UTC):", finalUTC);
     
     // Chama carregar com as datas UTC
-    carregarComDatas(inicioISO, finalISO);
+    carregarComDatas(inicioUTC, finalUTC);
   }
 
   // 🔄 Carregar da API com datas específicas
@@ -83,6 +108,7 @@ export default function App() {
       if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
@@ -91,6 +117,12 @@ export default function App() {
       const lista = json.dados || [];
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
+      
+      console.log("✅ Dados carregados:", lista.length, "registros");
+      if (lista.length > 0) {
+        console.log("📊 Primeiro registro:", utcToLocal(lista[0].registro));
+        console.log("📊 Último registro:", utcToLocal(lista[lista.length - 1].registro));
+      }
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
@@ -106,14 +138,15 @@ export default function App() {
     try {
       const params = new URLSearchParams({ equipamento });
       
-      // Converte as datas do formato local para UTC
-      const dataInicialISO = dataInicial ? new Date(dataInicial).toISOString().slice(0, 19) : '';
-      const dataFinalISO = dataFinal ? new Date(dataFinal).toISOString().slice(0, 19) : '';
+      // Converte as datas do formato local para UTC corretamente
+      const dataInicialUTC = dataInicial ? localToUTC(dataInicial) : '';
+      const dataFinalUTC = dataFinal ? localToUTC(dataFinal) : '';
       
-      if (dataInicialISO) params.append("data_inicial", dataInicialISO);
-      if (dataFinalISO) params.append("data_final", dataFinalISO);
+      if (dataInicialUTC) params.append("data_inicial", dataInicialUTC);
+      if (dataFinalUTC) params.append("data_final", dataFinalUTC);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
@@ -271,7 +304,7 @@ export default function App() {
     }
   };
 
-  // Estilos responsivos
+  // Estilos responsivos (mantidos iguais)
   const styles = {
     container: {
       minHeight: "100vh",
@@ -691,6 +724,7 @@ export default function App() {
                 <>
                   <div><strong>Data inicial:</strong> {agrupados[0].hora.replace(' ', ' às ')}</div>
                   <div><strong>Data final:</strong> {agrupados[agrupados.length - 1].hora.replace(' ', ' às ')}</div>
+                  <div><strong>Total de horas:</strong> {agrupados.length} horas</div>
                 </>
               )}
               <div style={{ marginTop: "8px", fontStyle: "italic" }}>
