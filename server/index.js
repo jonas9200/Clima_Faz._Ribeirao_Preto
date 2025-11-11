@@ -16,7 +16,32 @@ app.get("/", (req, res) => {
   res.send("🚀 API do IoT Dashboard está funcionando!");
 });
 
-// ✅ Rota principal de dados - SEM CONVERSÃO DE TIMEZONE
+// ✅ NOVA ROTA: Lista de equipamentos
+app.get("/api/equipamentos", async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT equipamento 
+      FROM iot.registros 
+      WHERE equipamento IS NOT NULL 
+      ORDER BY equipamento
+    `;
+
+    const { rows } = await pool.query(query);
+    
+    const equipamentos = rows.map(row => row.equipamento);
+    
+    console.log("📋 Equipamentos encontrados:", equipamentos);
+    
+    res.json({
+      equipamentos: equipamentos
+    });
+  } catch (err) {
+    console.error("Erro ao buscar equipamentos:", err);
+    res.status(500).json({ erro: "Erro interno no servidor" });
+  }
+});
+
+// ✅ Rota principal de dados
 app.get("/api/series", async (req, res) => {
   const { equipamento, data_inicial, data_final } = req.query;
 
@@ -33,7 +58,6 @@ app.get("/api/series", async (req, res) => {
       query += ` AND equipamento = $${params.length}`;
     }
 
-    // ✅ USA AS DATAS EXATAS DO BANCO - SEM CONVERSÃO
     if (data_inicial) {
       params.push(data_inicial);
       query += ` AND registro >= $${params.length}`;
@@ -58,10 +82,6 @@ app.get("/api/series", async (req, res) => {
     );
 
     console.log("✅ Dados retornados:", rows.length, "registros");
-    if (rows.length > 0) {
-      console.log("📅 Primeiro registro:", rows[0].registro);
-      console.log("📅 Último registro:", rows[rows.length - 1].registro);
-    }
 
     res.json({
       total_chuva: somaChuva,
