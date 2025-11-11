@@ -41,7 +41,7 @@ export default function App() {
     const agora = new Date();
     const inicio = new Date(agora);
 
-    if (p === "27h") inicio.setHours(inicio.getHours() - 27);
+    if (p === "24h") inicio.setHours(inicio.getHours() - 24);
     if (p === "7d") inicio.setDate(inicio.getDate() - 7);
     if (p === "30d") inicio.setDate(inicio.getDate() - 30);
 
