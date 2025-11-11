@@ -25,18 +25,7 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Função para converter UTC para Local (para os gráficos)
-  function utcToLocal(utcString) {
-    const date = new Date(utcString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    
-    return `${year}-${month}-${day} ${hours}:00`;
-  }
-
-  // Função para formatar data para o input datetime-local (YYYY-MM-DDTHH:MM)
+  // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -47,22 +36,86 @@ export default function App() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  // 🔄 Carregar dados com filtros normais
+  // Função para converter input para formato do banco (YYYY-MM-DD HH:MM:SS)
+  function toDatabaseFormat(datetimeString) {
+    if (!datetimeString) return '';
+    const date = new Date(datetimeString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  // 📆 Filtros rápidos
+  function calcularPeriodoRapido(p) {
+    const agora = new Date();
+    const inicio = new Date(agora);
+
+    if (p === "24h") {
+      inicio.setHours(inicio.getHours() - 24);
+    } else if (p === "7d") {
+      inicio.setDate(inicio.getDate() - 7);
+    } else if (p === "30d") {
+      inicio.setDate(inicio.getDate() - 30);
+    }
+
+    // Atualiza os estados para mostrar ao usuário
+    setDataInicial(toLocalDatetimeString(inicio));
+    setDataFinal(toLocalDatetimeString(agora));
+    setPeriodo(p);
+
+    // Envia as datas no formato do banco
+    const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
+    const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
+
+    carregarComDatas(inicioBanco, finalBanco);
+  }
+
+  // 🔄 Carregar da API com datas específicas
+  async function carregarComDatas(inicial, final) {
+    setLoading(true);
+    setErro("");
+    try {
+      const params = new URLSearchParams({ equipamento });
+      if (inicial) params.append("data_inicial", inicial);
+      if (final) params.append("data_final", final);
+
+      const url = `${baseUrl}/api/series?${params.toString()}`;
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro ao buscar dados");
+      const json = await resp.json();
+
+      const lista = json.dados || [];
+      setDados(lista);
+      setTotalChuva(json.total_chuva || 0);
+      
+    } catch (e) {
+      setErro("Falha ao carregar dados. Verifique a API.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 🔄 Carregar da API usando os estados atuais
   async function carregar() {
     setLoading(true);
     setErro("");
     try {
       const params = new URLSearchParams({ equipamento });
       
-      // Converte as datas do formato local para UTC
-      const dataInicialUTC = dataInicial ? new Date(dataInicial).toISOString().slice(0, 19) : '';
-      const dataFinalUTC = dataFinal ? new Date(dataFinal).toISOString().slice(0, 19) : '';
+      const dataInicialBanco = toDatabaseFormat(dataInicial);
+      const dataFinalBanco = toDatabaseFormat(dataFinal);
       
-      if (dataInicialUTC) params.append("data_inicial", dataInicialUTC);
-      if (dataFinalUTC) params.append("data_final", dataFinalUTC);
+      if (dataInicialBanco) params.append("data_inicial", dataInicialBanco);
+      if (dataFinalBanco) params.append("data_final", dataFinalBanco);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
-      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
@@ -71,60 +124,12 @@ export default function App() {
       const lista = json.dados || [];
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
-      
-      console.log("✅ Dados carregados:", lista.length, "registros");
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }
-
-  // 🔄 Carregar dados com período rápido (usa a nova rota da API)
-  async function carregarPeriodoRapido(p) {
-    setLoading(true);
-    setErro("");
-    try {
-      const params = new URLSearchParams({ 
-        equipamento,
-        periodo: p 
-      });
-
-      const url = `${baseUrl}/api/series/periodo-rapido?${params.toString()}`;
-      console.log("📡 Buscando dados (período rápido):", url);
-
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error("Erro ao buscar dados");
-      const json = await resp.json();
-
-      const lista = json.dados || [];
-      setDados(lista);
-      setTotalChuva(json.total_chuva || 0);
-      
-      console.log("✅ Dados carregados (período rápido):", lista.length, "registros");
-      
-      // Atualiza os campos de data para mostrar ao usuário
-      if (lista.length > 0) {
-        const primeiroRegistro = new Date(lista[0].registro);
-        const ultimoRegistro = new Date(lista[lista.length - 1].registro);
-        
-        setDataInicial(toLocalDatetimeString(primeiroRegistro));
-        setDataFinal(toLocalDatetimeString(ultimoRegistro));
-      }
-      
-    } catch (e) {
-      setErro("Falha ao carregar dados. Verifique a API.");
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // 📆 Filtros rápidos
-  function calcularPeriodoRapido(p) {
-    setPeriodo(p);
-    carregarPeriodoRapido(p);
   }
 
   function limparFiltro() {
@@ -138,28 +143,38 @@ export default function App() {
     carregar();
   }, [equipamento]);
 
-  // 🧮 Agrupar por hora - CONVERTE UTC PARA LOCAL
+  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
   function agruparPorHora(lista) {
     const mapa = {};
 
     lista.forEach((d) => {
-      // Converte UTC para Local
-      const dataLocal = utcToLocal(d.registro);
+      // Usa o horário exato que veio do banco
+      const registro = d.registro;
       
-      if (!mapa[dataLocal]) {
-        mapa[dataLocal] = {
+      // Extrai a parte da hora (YYYY-MM-DD HH:00)
+      let horaStr;
+      if (registro.includes('T')) {
+        // Formato ISO
+        horaStr = registro.slice(0, 13) + ":00:00";
+      } else {
+        // Formato string do banco
+        horaStr = registro.slice(0, 13) + ":00:00";
+      }
+
+      if (!mapa[horaStr]) {
+        mapa[horaStr] = {
           count: 0,
           somaTemp: 0,
           somaUmid: 0,
           somaChuva: 0,
-          timestamp: new Date(d.registro).getTime()
+          timestamp: new Date(registro).getTime()
         };
       }
 
-      mapa[dataLocal].count++;
-      mapa[dataLocal].somaTemp += Number(d.temperatura) || 0;
-      mapa[dataLocal].somaUmid += Number(d.umidade) || 0;
-      mapa[dataLocal].somaChuva += Number(d.chuva) || 0;
+      mapa[horaStr].count++;
+      mapa[horaStr].somaTemp += Number(d.temperatura) || 0;
+      mapa[horaStr].somaUmid += Number(d.umidade) || 0;
+      mapa[horaStr].somaChuva += Number(d.chuva) || 0;
     });
 
     // Ordena pelos timestamps
@@ -200,11 +215,8 @@ export default function App() {
           title: (context) => {
             const index = context[0].dataIndex;
             const dataOriginal = agrupados[index];
-            // Já está em formato local, só formata bonito
-            const [datePart, timePart] = dataOriginal.hora.split(' ');
-            const date = new Date(datePart + 'T' + timePart + ':00');
-            
-            return date.toLocaleString('pt-BR', {
+            // Mostra o horário exato do banco
+            return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
               year: 'numeric',
@@ -686,10 +698,9 @@ export default function App() {
             }}>
               {agrupados.length > 0 && (
                 <>
-                  <div><strong>Data inicial:</strong> {agrupados[0].hora.replace(' ', ' às ')}</div>
-                  <div><strong>Data final:</strong> {agrupados[agrupados.length - 1].hora.replace(' ', ' às ')}</div>
+                  <div><strong>Data inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>Data final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>Total de horas:</strong> {agrupados.length} horas</div>
-                  {periodo && <div><strong>Filtro ativo:</strong> {periodo}</div>}
                 </>
               )}
               <div style={{ marginTop: "8px", fontStyle: "italic" }}>
