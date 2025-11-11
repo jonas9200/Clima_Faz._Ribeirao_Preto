@@ -32,9 +32,8 @@ export default function App() {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
     
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
+    return `${year}-${month}-${day} ${hours}:00`;
   }
 
   // Função para formatar data para o input datetime-local (YYYY-MM-DDTHH:MM)
@@ -61,10 +60,6 @@ export default function App() {
     const inicioLocal = toLocalDatetimeString(inicio);
     const finalLocal = toLocalDatetimeString(agora);
 
-    console.log("🕒 Período rápido:", p);
-    console.log("⏰ Início (local):", inicioLocal);
-    console.log("⏰ Final (local):", finalLocal);
-
     // Atualiza os estados primeiro
     setDataInicial(inicioLocal);
     setDataFinal(finalLocal);
@@ -73,9 +68,6 @@ export default function App() {
     // Converte para ISO (UTC) para a API
     const inicioISO = inicio.toISOString().slice(0, 19);
     const finalISO = agora.toISOString().slice(0, 19);
-    
-    console.log("🌐 Data inicial (ISO/UTC):", inicioISO);
-    console.log("🌐 Data final (ISO/UTC):", finalISO);
     
     // Chama carregar com as datas UTC
     carregarComDatas(inicioISO, finalISO);
@@ -91,7 +83,6 @@ export default function App() {
       if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
-      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
@@ -100,14 +91,6 @@ export default function App() {
       const lista = json.dados || [];
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
-      console.log("✅ Dados carregados:", lista.length, "registros");
-      
-      if (lista.length > 0) {
-        console.log("📅 Primeiro registro (UTC):", lista[0].registro);
-        console.log("📅 Primeiro registro (Local):", utcToLocal(lista[0].registro));
-        console.log("📅 Último registro (UTC):", lista[lista.length - 1].registro);
-        console.log("📅 Último registro (Local):", utcToLocal(lista[lista.length - 1].registro));
-      }
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
@@ -131,7 +114,6 @@ export default function App() {
       if (dataFinalISO) params.append("data_final", dataFinalISO);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
-      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
@@ -167,11 +149,8 @@ export default function App() {
       // Converte UTC para Local
       const dataLocal = utcToLocal(d.registro);
       
-      // Extrai apenas a parte da hora (YYYY-MM-DD HH:00)
-      const horaStr = dataLocal.slice(0, 13) + ":00";
-
-      if (!mapa[horaStr]) {
-        mapa[horaStr] = {
+      if (!mapa[dataLocal]) {
+        mapa[dataLocal] = {
           count: 0,
           somaTemp: 0,
           somaUmid: 0,
@@ -180,10 +159,10 @@ export default function App() {
         };
       }
 
-      mapa[horaStr].count++;
-      mapa[horaStr].somaTemp += Number(d.temperatura) || 0;
-      mapa[horaStr].somaUmid += Number(d.umidade) || 0;
-      mapa[horaStr].somaChuva += Number(d.chuva) || 0;
+      mapa[dataLocal].count++;
+      mapa[dataLocal].somaTemp += Number(d.temperatura) || 0;
+      mapa[dataLocal].somaUmid += Number(d.umidade) || 0;
+      mapa[dataLocal].somaChuva += Number(d.chuva) || 0;
     });
 
     // Ordena pelos timestamps
@@ -226,8 +205,7 @@ export default function App() {
             const dataOriginal = agrupados[index];
             // Já está em formato local, só formata bonito
             const [datePart, timePart] = dataOriginal.hora.split(' ');
-            const [hours] = timePart.split(':');
-            const date = new Date(datePart + 'T' + hours + ':00:00');
+            const date = new Date(datePart + 'T' + timePart + ':00');
             
             return date.toLocaleString('pt-BR', {
               day: '2-digit',
@@ -293,8 +271,197 @@ export default function App() {
     }
   };
 
-  // Estilos responsivos (mantidos iguais)
-  // ... (os estilos permanecem os mesmos)
+  // Estilos responsivos
+  const styles = {
+    container: {
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      padding: isMobile ? "10px" : "20px",
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    },
+    header: {
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "16px",
+      padding: isMobile ? "16px" : "24px",
+      marginBottom: isMobile ? "16px" : "24px",
+      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+    },
+    headerContent: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      justifyContent: "space-between",
+      alignItems: isMobile ? "flex-start" : "center",
+      gap: "16px",
+    },
+    title: {
+      margin: 0,
+      fontSize: isMobile ? "1.5rem" : "2rem",
+      fontWeight: "700",
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+    },
+    subtitle: {
+      margin: "4px 0 0 0",
+      color: "#666",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+    },
+    weatherCard: {
+      display: "flex",
+      gap: isMobile ? "20px" : "32px",
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      padding: isMobile ? "12px 16px" : "16px 24px",
+      borderRadius: "12px",
+      color: "white",
+      width: isMobile ? "100%" : "auto",
+      justifyContent: isMobile ? "space-around" : "flex-start",
+    },
+    card: {
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "12px",
+      padding: isMobile ? "16px" : "20px",
+      marginBottom: isMobile ? "16px" : "20px",
+      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+    },
+    cardTitle: {
+      margin: "0 0 16px 0",
+      fontSize: isMobile ? "1.1rem" : "1.2rem",
+      fontWeight: "600",
+      color: "#333",
+    },
+    formGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+      gap: "12px",
+      marginBottom: "16px",
+    },
+    formGroup: {
+      display: "flex",
+      flexDirection: "column",
+    },
+    label: {
+      marginBottom: "6px",
+      fontWeight: "500",
+      color: "#555",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+    },
+    input: {
+      padding: "10px",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      backgroundColor: "white",
+    },
+    buttonGroup: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: "10px",
+    },
+    primaryButton: {
+      padding: "10px 20px",
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      color: "white",
+      border: "none",
+      borderRadius: "6px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+    },
+    secondaryButton: {
+      padding: "10px 20px",
+      background: "transparent",
+      color: "#666",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+    },
+    quickFilters: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: "10px",
+      flexWrap: "wrap",
+    },
+    quickFilterButton: {
+      padding: "10px 14px",
+      background: "transparent",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      cursor: "pointer",
+      textAlign: "center",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+    },
+    quickFilterActive: {
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      color: "white",
+      borderColor: "transparent",
+    },
+    loading: {
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+      padding: "16px",
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "8px",
+      color: "#666",
+      justifyContent: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+    },
+    spinner: {
+      width: "18px",
+      height: "18px",
+      border: "2px solid #e0e0e0",
+      borderTop: "2px solid #667eea",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite",
+    },
+    error: {
+      padding: "14px",
+      background: "rgba(255, 107, 107, 0.1)",
+      border: "1px solid #ff6b6b",
+      borderRadius: "8px",
+      color: "#d63031",
+      textAlign: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+    },
+    emptyState: {
+      textAlign: "center",
+      padding: "40px 20px",
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "12px",
+      color: "#666",
+    },
+    chartsGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+      gap: isMobile ? "16px" : "20px",
+      marginBottom: isMobile ? "16px" : "20px",
+    },
+    chartCard: {
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "12px",
+      padding: isMobile ? "16px" : "20px",
+      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+      height: isMobile ? "300px" : "350px",
+    },
+    chartHeader: {
+      marginBottom: "16px",
+      textAlign: "center",
+    },
+    chartTitle: {
+      margin: 0,
+      fontSize: isMobile ? "1rem" : "1.1rem",
+      fontWeight: "600",
+      color: "#333",
+    },
+  };
 
   return (
     <div style={styles.container}>
@@ -357,10 +524,20 @@ export default function App() {
         </div>
 
         <div style={styles.buttonGroup}>
-          <button style={styles.primaryButton} onClick={() => carregar()}>
+          <button 
+            style={styles.primaryButton} 
+            onClick={() => carregar()}
+            onMouseOver={(e) => e.target.style.opacity = "0.8"}
+            onMouseOut={(e) => e.target.style.opacity = "1"}
+          >
             🔍 Aplicar Filtros
           </button>
-          <button style={styles.secondaryButton} onClick={limparFiltro}>
+          <button 
+            style={styles.secondaryButton} 
+            onClick={limparFiltro}
+            onMouseOver={(e) => e.target.style.backgroundColor = "#f5f5f5"}
+            onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
+          >
             🗑️ Limpar
           </button>
         </div>
@@ -376,6 +553,8 @@ export default function App() {
               ...(periodo === "24h" ? styles.quickFilterActive : {})
             }}
             onClick={() => calcularPeriodoRapido("24h")}
+            onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
+            onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
           >
             ⏰ Últimas 24h
           </button>
@@ -385,6 +564,8 @@ export default function App() {
               ...(periodo === "7d" ? styles.quickFilterActive : {})
             }}
             onClick={() => calcularPeriodoRapido("7d")}
+            onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
+            onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
           >
             📅 Última Semana
           </button>
@@ -394,6 +575,8 @@ export default function App() {
               ...(periodo === "30d" ? styles.quickFilterActive : {})
             }}
             onClick={() => calcularPeriodoRapido("30d")}
+            onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
+            onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
           >
             📊 Último Mês
           </button>
@@ -533,4 +716,3 @@ export default function App() {
     </div>
   );
 }
-
