@@ -42,38 +42,73 @@ export default function App() {
   // 📆 Filtros rápidos
   function calcularPeriodoRapido(p) {
     const agora = new Date();
-    
-    // Converte para o formato do input datetime-local (local time)
-    const final = toLocalISOString(agora);
     const inicio = new Date(agora);
 
     if (p === "24h") inicio.setHours(inicio.getHours() - 24);
     if (p === "7d") inicio.setDate(inicio.getDate() - 7);
     if (p === "30d") inicio.setDate(inicio.getDate() - 30);
 
+    // Converte para o formato do input datetime-local
     const inicioLocal = toLocalISOString(inicio);
+    const finalLocal = toLocalISOString(agora);
 
+    // Atualiza os estados primeiro
     setDataInicial(inicioLocal);
-    setDataFinal(final);
+    setDataFinal(finalLocal);
     setPeriodo(p);
 
     // Converte para ISO antes de enviar para a API
     const inicioISO = fromLocalInputToISO(inicioLocal);
-    const finalISO = fromLocalInputToISO(final);
+    const finalISO = fromLocalInputToISO(finalLocal);
     
-    carregar(inicioISO, finalISO);
+    console.log("🕒 Período rápido:", p);
+    console.log("📅 Data inicial (local):", inicioLocal);
+    console.log("📅 Data final (local):", finalLocal);
+    console.log("🌐 Data inicial (ISO):", inicioISO);
+    console.log("🌐 Data final (ISO):", finalISO);
+    
+    // Chama carregar com as datas ISO
+    carregarComDatas(inicioISO, finalISO);
   }
 
-  // 🔄 Carregar da API
-  async function carregar(inicial = dataInicial, final = dataFinal) {
+  // 🔄 Carregar da API com datas específicas
+  async function carregarComDatas(inicial, final) {
+    setLoading(true);
+    setErro("");
+    try {
+      const params = new URLSearchParams({ equipamento });
+      if (inicial) params.append("data_inicial", inicial);
+      if (final) params.append("data_final", final);
+
+      const url = `${baseUrl}/api/series?${params.toString()}`;
+      console.log("📡 Buscando dados:", url);
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro ao buscar dados");
+      const json = await resp.json();
+
+      const lista = json.dados || [];
+      setDados(lista);
+      setTotalChuva(json.total_chuva || 0);
+      console.log("✅ Dados carregados:", lista.length, "registros");
+    } catch (e) {
+      setErro("Falha ao carregar dados. Verifique a API.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 🔄 Carregar da API usando os estados atuais
+  async function carregar() {
     setLoading(true);
     setErro("");
     try {
       const params = new URLSearchParams({ equipamento });
       
       // Converte as datas do formato local para ISO se necessário
-      const dataInicialISO = inicial.includes('T') ? fromLocalInputToISO(inicial) : inicial;
-      const dataFinalISO = final.includes('T') ? fromLocalInputToISO(final) : final;
+      const dataInicialISO = dataInicial.includes('T') ? fromLocalInputToISO(dataInicial) : dataInicial;
+      const dataFinalISO = dataFinal.includes('T') ? fromLocalInputToISO(dataFinal) : dataFinal;
       
       if (dataInicialISO) params.append("data_inicial", dataInicialISO);
       if (dataFinalISO) params.append("data_final", dataFinalISO);
@@ -88,6 +123,7 @@ export default function App() {
       const lista = json.dados || [];
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
+      console.log("✅ Dados carregados:", lista.length, "registros");
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
