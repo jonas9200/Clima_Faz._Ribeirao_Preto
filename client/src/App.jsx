@@ -14,6 +14,7 @@ export default function App() {
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [activeTab, setActiveTab] = useState("chuva"); // Nova state para abas
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
@@ -243,6 +244,13 @@ export default function App() {
       tooltip: {
         mode: 'index',
         intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleFont: {
+          size: isMobile ? 12 : 14
+        },
+        bodyFont: {
+          size: isMobile ? 11 : 13
+        },
         callbacks: {
           title: (context) => {
             const index = context[0].dataIndex;
@@ -312,27 +320,39 @@ export default function App() {
     }
   };
 
-  // Estilos responsivos
+  // Estilos completamente reformulados
   const styles = {
     container: {
       minHeight: "100vh",
       background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
       padding: isMobile ? "10px" : "20px",
-      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      fontFamily: "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     },
     header: {
       background: "rgba(255, 255, 255, 0.95)",
-      borderRadius: "16px",
-      padding: isMobile ? "16px" : "24px",
-      marginBottom: isMobile ? "16px" : "24px",
-      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+      borderRadius: "20px",
+      padding: isMobile ? "20px" : "30px",
+      marginBottom: isMobile ? "20px" : "30px",
+      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.15)",
+      backdropFilter: "blur(10px)",
     },
     headerContent: {
       display: "flex",
       flexDirection: isMobile ? "column" : "row",
       justifyContent: "space-between",
       alignItems: isMobile ? "flex-start" : "center",
-      gap: "16px",
+      gap: "20px",
+    },
+    titleSection: {
+      display: "flex",
+      alignItems: "center",
+      gap: "15px",
+    },
+    logo: {
+      fontSize: isMobile ? "2rem" : "2.5rem",
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
     },
     title: {
       margin: 0,
@@ -343,87 +363,108 @@ export default function App() {
       WebkitTextFillColor: "transparent",
     },
     subtitle: {
-      margin: "4px 0 0 0",
+      margin: "8px 0 0 0",
       color: "#666",
       fontSize: isMobile ? "0.9rem" : "1rem",
+      fontWeight: "400",
     },
-    weatherCard: {
-      display: "flex",
-      gap: isMobile ? "20px" : "32px",
-      background: "linear-gradient(135deg, #667eea, #764ba2)",
-      padding: isMobile ? "12px 16px" : "16px 24px",
-      borderRadius: "12px",
-      color: "white",
+    statsGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr",
+      gap: "15px",
       width: isMobile ? "100%" : "auto",
-      justifyContent: isMobile ? "space-around" : "flex-start",
+    },
+    statCard: {
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      padding: isMobile ? "15px" : "20px",
+      borderRadius: "15px",
+      color: "white",
+      textAlign: "center",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    },
+    statValue: {
+      fontSize: isMobile ? "1.3rem" : "1.6rem",
+      fontWeight: "bold",
+      marginBottom: "5px",
+    },
+    statLabel: {
+      fontSize: isMobile ? "0.7rem" : "0.8rem",
+      opacity: 0.9,
     },
     card: {
       background: "rgba(255, 255, 255, 0.95)",
-      borderRadius: "12px",
-      padding: isMobile ? "16px" : "20px",
-      marginBottom: isMobile ? "16px" : "20px",
-      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+      borderRadius: "15px",
+      padding: isMobile ? "20px" : "25px",
+      marginBottom: isMobile ? "20px" : "25px",
+      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.1)",
+      backdropFilter: "blur(10px)",
     },
     cardTitle: {
-      margin: "0 0 16px 0",
-      fontSize: isMobile ? "1.1rem" : "1.2rem",
+      margin: "0 0 20px 0",
+      fontSize: isMobile ? "1.2rem" : "1.3rem",
       fontWeight: "600",
       color: "#333",
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
     },
     formGrid: {
       display: "grid",
       gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
-      gap: "12px",
-      marginBottom: "16px",
+      gap: "15px",
+      marginBottom: "20px",
     },
     formGroup: {
       display: "flex",
       flexDirection: "column",
     },
     label: {
-      marginBottom: "6px",
+      marginBottom: "8px",
       fontWeight: "500",
       color: "#555",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
     },
     input: {
-      padding: "10px",
-      border: "1px solid #ddd",
-      borderRadius: "6px",
+      padding: "12px",
+      border: "1px solid #e0e0e0",
+      borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       backgroundColor: "white",
+      transition: "all 0.3s ease",
     },
     select: {
-      padding: "10px",
-      border: "1px solid #ddd",
-      borderRadius: "6px",
+      padding: "12px",
+      border: "1px solid #e0e0e0",
+      borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       backgroundColor: "white",
       cursor: "pointer",
+      transition: "all 0.3s ease",
     },
     buttonGroup: {
       display: "flex",
       flexDirection: isMobile ? "column" : "row",
-      gap: "10px",
+      gap: "12px",
     },
     primaryButton: {
-      padding: "10px 20px",
+      padding: "12px 24px",
       background: "linear-gradient(135deg, #667eea, #764ba2)",
       color: "white",
       border: "none",
-      borderRadius: "6px",
+      borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
       flex: isMobile ? "1" : "none",
       transition: "all 0.3s ease",
+      boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
     },
     secondaryButton: {
-      padding: "10px 20px",
+      padding: "12px 24px",
       background: "transparent",
       color: "#666",
-      border: "1px solid #ddd",
-      borderRadius: "6px",
+      border: "1px solid #e0e0e0",
+      borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
@@ -433,116 +474,218 @@ export default function App() {
     quickFilters: {
       display: "flex",
       flexDirection: isMobile ? "column" : "row",
-      gap: "10px",
+      gap: "12px",
       flexWrap: "wrap",
     },
     quickFilterButton: {
-      padding: "10px 14px",
+      padding: "12px 18px",
       background: "transparent",
-      border: "1px solid #ddd",
-      borderRadius: "6px",
+      border: "1px solid #e0e0e0",
+      borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       cursor: "pointer",
       textAlign: "center",
       flex: isMobile ? "1" : "none",
       transition: "all 0.3s ease",
+      fontWeight: "500",
     },
     quickFilterActive: {
       background: "linear-gradient(135deg, #667eea, #764ba2)",
       color: "white",
       borderColor: "transparent",
+      boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
     },
     loading: {
       display: "flex",
       alignItems: "center",
-      gap: "10px",
-      padding: "16px",
+      gap: "12px",
+      padding: "20px",
       background: "rgba(255, 255, 255, 0.95)",
-      borderRadius: "8px",
+      borderRadius: "10px",
       color: "#666",
       justifyContent: "center",
       fontSize: isMobile ? "0.9rem" : "1rem",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
     },
     spinner: {
-      width: "18px",
-      height: "18px",
+      width: "20px",
+      height: "20px",
       border: "2px solid #e0e0e0",
       borderTop: "2px solid #667eea",
       borderRadius: "50%",
       animation: "spin 1s linear infinite",
     },
     error: {
-      padding: "14px",
+      padding: "16px",
       background: "rgba(255, 107, 107, 0.1)",
       border: "1px solid #ff6b6b",
-      borderRadius: "8px",
+      borderRadius: "10px",
       color: "#d63031",
       textAlign: "center",
       fontSize: isMobile ? "0.9rem" : "1rem",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
     },
     emptyState: {
       textAlign: "center",
-      padding: "40px 20px",
+      padding: "50px 20px",
       background: "rgba(255, 255, 255, 0.95)",
-      borderRadius: "12px",
+      borderRadius: "15px",
       color: "#666",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
     },
-    chartsGrid: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-      gap: isMobile ? "16px" : "20px",
-      marginBottom: isMobile ? "16px" : "20px",
+    tabsContainer: {
+      display: "flex",
+      background: "rgba(255, 255, 255, 0.9)",
+      borderRadius: "12px",
+      padding: "5px",
+      marginBottom: "20px",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+    },
+    tab: {
+      flex: 1,
+      padding: "12px 16px",
+      textAlign: "center",
+      borderRadius: "8px",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+      fontWeight: "500",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+    },
+    activeTab: {
+      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      color: "white",
+      boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
     },
     chartCard: {
       background: "rgba(255, 255, 255, 0.95)",
-      borderRadius: "12px",
-      padding: isMobile ? "16px" : "20px",
-      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
-      height: isMobile ? "300px" : "350px",
+      borderRadius: "15px",
+      padding: isMobile ? "20px" : "25px",
+      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.1)",
+      height: isMobile ? "350px" : "400px",
+      marginBottom: isMobile ? "20px" : "25px",
     },
     chartHeader: {
-      marginBottom: "16px",
+      marginBottom: "20px",
       textAlign: "center",
     },
     chartTitle: {
       margin: 0,
-      fontSize: isMobile ? "1rem" : "1.1rem",
+      fontSize: isMobile ? "1.1rem" : "1.2rem",
       fontWeight: "600",
       color: "#333",
     },
   };
 
+  // Função para renderizar o gráfico ativo
+  const renderActiveChart = () => {
+    switch (activeTab) {
+      case "chuva":
+        return (
+          <Bar
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Chuva por hora (mm)",
+                  data: chuva,
+                  backgroundColor: "rgba(81, 207, 102, 0.8)",
+                  borderColor: "#51cf66",
+                  borderWidth: 2,
+                  borderRadius: 6,
+                },
+              ],
+            }}
+            options={barOptions}
+          />
+        );
+      case "temperatura":
+        return (
+          <Line
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Temperatura (°C)",
+                  data: temperatura,
+                  borderColor: "#ff6b6b",
+                  backgroundColor: "rgba(255, 107, 107, 0.1)",
+                  borderWidth: 3,
+                  tension: 0.4,
+                  fill: true,
+                },
+              ],
+            }}
+            options={chartOptions}
+          />
+        );
+      case "umidade":
+        return (
+          <Line
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Umidade (%)",
+                  data: umidade,
+                  borderColor: "#4dabf7",
+                  backgroundColor: "rgba(77, 171, 247, 0.1)",
+                  borderWidth: 3,
+                  tension: 0.4,
+                  fill: true,
+                },
+              ],
+            }}
+            options={chartOptions}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div style={styles.container}>
-      {/* 🎯 HEADER */}
+      {/* 🎯 HEADER ELEGANTE */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div>
-            <h1 style={styles.title}>🌦️ Fazenda Ribeirão Preto</h1>
-            <p style={styles.subtitle}>Monitoramento Meteorológico</p>
+            <div style={styles.titleSection}>
+              <div style={styles.logo}>🌦️</div>
+              <div>
+                <h1 style={styles.title}>Fazenda Ribeirão Preto</h1>
+                <p style={styles.subtitle}>Monitoramento Meteorológico em Tempo Real</p>
+              </div>
+            </div>
           </div>
+          
           {!loading && !erro && agrupados.length > 0 && (
-            <div style={styles.weatherCard}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: isMobile ? "0.7rem" : "0.8rem", opacity: 0.9 }}>Total de Chuva</div>
-                <div style={{ fontSize: isMobile ? "1.1rem" : "1.3rem", fontWeight: "bold" }}>{totalChuva.toFixed(2)} mm</div>
+            <div style={styles.statsGrid}>
+              <div style={styles.statCard}>
+                <div style={styles.statValue}>{totalChuva.toFixed(2)} mm</div>
+                <div style={styles.statLabel}>Total de Chuva</div>
               </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: isMobile ? "0.7rem" : "0.8rem", opacity: 0.9 }}>Período</div>
-                <div style={{ fontSize: isMobile ? "1.1rem" : "1.3rem", fontWeight: "bold" }}>{agrupados.length}h</div>
+              <div style={styles.statCard}>
+                <div style={styles.statValue}>{agrupados.length}</div>
+                <div style={styles.statLabel}>Horas Analisadas</div>
               </div>
+              {!isMobile && (
+                <div style={styles.statCard}>
+                  <div style={styles.statValue}>{equipamento}</div>
+                  <div style={styles.statLabel}>Equipamento</div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </header>
 
-      {/* 🎛️ PAINEL DE CONTROLE */}
+      {/* 🎛️ PAINEL DE CONTROLE MODERNO */}
       <div style={styles.card}>
-        <h3 style={styles.cardTitle}>🔧 Filtros e Configurações</h3>
+        <h3 style={styles.cardTitle}>⚙️ Configurações</h3>
         
         <div style={styles.formGrid}>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Equipamento</label>
+            <label style={styles.label}>📡 Equipamento</label>
             {loadingEquipamentos ? (
               <div style={styles.loading}>
                 <div style={styles.spinner}></div>
@@ -553,6 +696,8 @@ export default function App() {
                 style={styles.select}
                 value={equipamento}
                 onChange={(e) => setEquipamento(e.target.value)}
+                onFocus={(e) => e.target.style.borderColor = "#667eea"}
+                onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
               >
                 <option value="">Selecione um equipamento</option>
                 {equipamentos.map((eqp) => (
@@ -565,22 +710,26 @@ export default function App() {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Data Inicial</label>
+            <label style={styles.label}>📅 Data Inicial</label>
             <input
               type="datetime-local"
               style={styles.input}
               value={dataInicial}
               onChange={(e) => setDataInicial(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#667eea"}
+              onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
             />
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Data Final</label>
+            <label style={styles.label}>📅 Data Final</label>
             <input
               type="datetime-local"
               style={styles.input}
               value={dataFinal}
               onChange={(e) => setDataFinal(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#667eea"}
+              onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
             />
           </div>
         </div>
@@ -589,8 +738,8 @@ export default function App() {
           <button 
             style={styles.primaryButton} 
             onClick={() => carregar()}
-            onMouseOver={(e) => e.target.style.opacity = "0.8"}
-            onMouseOut={(e) => e.target.style.opacity = "1"}
+            onMouseOver={(e) => e.target.style.transform = "translateY(-2px)"}
+            onMouseOut={(e) => e.target.style.transform = "translateY(0)"}
             disabled={!equipamento}
           >
             🔍 Aplicar Filtros
@@ -598,54 +747,35 @@ export default function App() {
           <button 
             style={styles.secondaryButton} 
             onClick={limparFiltro}
-            onMouseOver={(e) => e.target.style.backgroundColor = "#f5f5f5"}
+            onMouseOver={(e) => e.target.style.backgroundColor = "#f8f9fa"}
             onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
           >
-            🗑️ Limpar
+            🗑️ Limpar Filtros
           </button>
         </div>
       </div>
 
-      {/* ⏱️ FILTROS RÁPIDOS */}
+      {/* ⏱️ FILTROS RÁPIDOS ESTILIZADOS */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>⏱️ Período Rápido</h3>
         <div style={styles.quickFilters}>
-          <button
-            style={{
-              ...styles.quickFilterButton,
-              ...(periodo === "24h" ? styles.quickFilterActive : {})
-            }}
-            onClick={() => calcularPeriodoRapido("24h")}
-            onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
-            onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
-            disabled={!equipamento}
-          >
-            ⏰ Últimas 24h
-          </button>
-          <button
-            style={{
-              ...styles.quickFilterButton,
-              ...(periodo === "7d" ? styles.quickFilterActive : {})
-            }}
-            onClick={() => calcularPeriodoRapido("7d")}
-            onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
-            onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
-            disabled={!equipamento}
-          >
-            📅 Última Semana
-          </button>
-          <button
-            style={{
-              ...styles.quickFilterButton,
-              ...(periodo === "30d" ? styles.quickFilterActive : {})
-            }}
-            onClick={() => calcularPeriodoRapido("30d")}
-            onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
-            onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
-            disabled={!equipamento}
-          >
-            📊 Último Mês
-          </button>
+          {["24h", "7d", "30d"].map((p) => (
+            <button
+              key={p}
+              style={{
+                ...styles.quickFilterButton,
+                ...(periodo === p ? styles.quickFilterActive : {})
+              }}
+              onClick={() => calcularPeriodoRapido(p)}
+              onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f8f9fa")}
+              onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
+              disabled={!equipamento}
+            >
+              {p === "24h" && "⏰ Últimas 24h"}
+              {p === "7d" && "📅 Última Semana"}
+              {p === "30d" && "📊 Último Mês"}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -666,111 +796,81 @@ export default function App() {
 
         {!loading && !erro && agrupados.length === 0 && equipamento && (
           <div style={styles.emptyState}>
-            <div style={{ fontSize: "3rem", marginBottom: "10px" }}>📈</div>
-            <h3>Nenhum dado encontrado</h3>
-            <p>Não há dados disponíveis para os filtros selecionados.</p>
+            <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📈</div>
+            <h3 style={{ marginBottom: "10px", color: "#333" }}>Nenhum dado encontrado</h3>
+            <p style={{ margin: 0 }}>Não há dados disponíveis para os filtros selecionados.</p>
           </div>
         )}
 
         {!equipamento && (
           <div style={styles.emptyState}>
-            <div style={{ fontSize: "3rem", marginBottom: "10px" }}>📡</div>
-            <h3>Selecione um equipamento</h3>
-            <p>Escolha um equipamento da lista para visualizar os dados.</p>
+            <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📡</div>
+            <h3 style={{ marginBottom: "10px", color: "#333" }}>Selecione um equipamento</h3>
+            <p style={{ margin: 0 }}>Escolha um equipamento da lista para visualizar os dados.</p>
           </div>
         )}
       </div>
 
-      {/* 📈 GRÁFICOS */}
+      {/* 📈 GRÁFICOS COM ABAS */}
       {agrupados.length > 0 && (
         <div>
-          <div style={styles.chartsGrid}>
-            <div style={styles.chartCard}>
-              <div style={styles.chartHeader}>
-                <h3 style={styles.chartTitle}>🌡️ Temperatura (°C)</h3>
-              </div>
-              <Line
-                data={{
-                  labels,
-                  datasets: [
-                    {
-                      label: "Temperatura (°C)",
-                      data: temperatura,
-                      borderColor: "#ff6b6b",
-                      backgroundColor: "rgba(255, 107, 107, 0.1)",
-                      borderWidth: 2,
-                      tension: 0.4,
-                      fill: true,
-                    },
-                  ],
+          {/* ABAS DE NAVEGAÇÃO */}
+          <div style={styles.tabsContainer}>
+            {[
+              { id: "chuva", label: "🌧️ Chuva", emoji: "🌧️" },
+              { id: "temperatura", label: "🌡️ Temperatura", emoji: "🌡️" },
+              { id: "umidade", label: "💧 Umidade", emoji: "💧" }
+            ].map((tab) => (
+              <div
+                key={tab.id}
+                style={{
+                  ...styles.tab,
+                  ...(activeTab === tab.id ? styles.activeTab : {})
                 }}
-                options={chartOptions}
-              />
-            </div>
-
-            <div style={styles.chartCard}>
-              <div style={styles.chartHeader}>
-                <h3 style={styles.chartTitle}>💧 Umidade (%)</h3>
+                onClick={() => setActiveTab(tab.id)}
+                onMouseOver={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "#f8f9fa")}
+                onMouseOut={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "transparent")}
+              >
+                {isMobile ? tab.emoji : tab.label}
               </div>
-              <Line
-                data={{
-                  labels,
-                  datasets: [
-                    {
-                      label: "Umidade (%)",
-                      data: umidade,
-                      borderColor: "#4dabf7",
-                      backgroundColor: "rgba(77, 171, 247, 0.1)",
-                      borderWidth: 2,
-                      tension: 0.4,
-                      fill: true,
-                    },
-                  ],
-                }}
-                options={chartOptions}
-              />
-            </div>
+            ))}
           </div>
 
+          {/* GRÁFICO ATIVO */}
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
-              <h3 style={styles.chartTitle}>🌧️ Precipitação Acumulada (mm)</h3>
+              <h3 style={styles.chartTitle}>
+                {activeTab === "chuva" && "🌧️ Precipitação por Hora (mm)"}
+                {activeTab === "temperatura" && "🌡️ Temperatura (°C)"}
+                {activeTab === "umidade" && "💧 Umidade Relativa (%)"}
+              </h3>
             </div>
-            <Bar
-              data={{
-                labels,
-                datasets: [
-                  {
-                    label: "Chuva por hora (mm)",
-                    data: chuva,
-                    backgroundColor: "#51cf66",
-                    borderRadius: 4,
-                  },
-                ],
-              }}
-              options={barOptions}
-            />
+            {renderActiveChart()}
           </div>
 
-          {/* 🗓️ LEGENDA DE DATAS */}
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO */}
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>📅 Período dos Dados</h3>
+            <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
             <div style={{ 
-              background: "rgba(102, 126, 234, 0.1)", 
-              padding: "12px", 
-              borderRadius: "8px",
-              fontSize: isMobile ? "0.8rem" : "0.9rem"
+              background: "linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))", 
+              padding: "20px", 
+              borderRadius: "12px",
+              fontSize: isMobile ? "0.85rem" : "0.95rem"
             }}>
               {agrupados.length > 0 && (
-                <>
-                  <div><strong>Equipamento:</strong> {equipamento}</div>
-                  <div><strong>Data inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
-                  <div><strong>Data final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
-                  <div><strong>Total de horas:</strong> {agrupados.length} horas</div>
-                </>
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                  gap: "15px" 
+                }}>
+                  <div><strong>📡 Equipamento:</strong> {equipamento}</div>
+                  <div><strong>📈 Total de Horas:</strong> {agrupados.length} horas</div>
+                  <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
+                  <div><strong>📊 Média Temperatura:</strong> {(temperatura.reduce((a, b) => a + b, 0) / temperatura.length).toFixed(2)} °C</div>
+                </div>
               )}
-              <div style={{ marginTop: "8px", fontStyle: "italic" }}>
-              </div>
             </div>
           </div>
         </div>
@@ -786,6 +886,18 @@ export default function App() {
           input[type="datetime-local"] {
             font-size: 16px;
           }
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        input:focus, select:focus, button:focus {
+          outline: none;
+        }
+
+        button:hover {
+          transform: translateY(-1px);
         }
       `}</style>
     </div>
