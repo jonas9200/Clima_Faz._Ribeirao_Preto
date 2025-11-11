@@ -14,7 +14,7 @@ export default function App() {
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [activeTab, setActiveTab] = useState("chuva"); // Nova state para abas
+  const [activeTab, setActiveTab] = useState("chuva");
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
@@ -44,13 +44,12 @@ export default function App() {
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
-      // Seleciona o primeiro equipamento por padrão, se existir
       if (listaEquipamentos.length > 0 && !equipamento) {
         setEquipamento(listaEquipamentos[0]);
       }
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
-      setEquipamentos(["Pluviometro_01"]); // Fallback
+      setEquipamentos(["Pluviometro_01"]);
     } finally {
       setLoadingEquipamentos(false);
     }
@@ -94,12 +93,10 @@ export default function App() {
       inicio.setDate(inicio.getDate() - 30);
     }
 
-    // Atualiza os estados para mostrar ao usuário
     setDataInicial(toLocalDatetimeString(inicio));
     setDataFinal(toLocalDatetimeString(agora));
     setPeriodo(p);
 
-    // Envia as datas no formato do banco
     const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
     const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
 
@@ -181,16 +178,12 @@ export default function App() {
     const mapa = {};
 
     lista.forEach((d) => {
-      // Usa o horário exato que veio do banco
       const registro = d.registro;
       
-      // Extrai a parte da hora (YYYY-MM-DD HH:00)
       let horaStr;
       if (registro.includes('T')) {
-        // Formato ISO
         horaStr = registro.slice(0, 13) + ":00:00";
       } else {
-        // Formato string do banco
         horaStr = registro.slice(0, 13) + ":00:00";
       }
 
@@ -210,7 +203,6 @@ export default function App() {
       mapa[horaStr].somaChuva += Number(d.chuva) || 0;
     });
 
-    // Ordena pelos timestamps
     const horasOrdenadas = Object.keys(mapa).sort((a, b) => 
       mapa[a].timestamp - mapa[b].timestamp
     );
@@ -225,15 +217,12 @@ export default function App() {
   }
 
   const agrupados = agruparPorHora(dados);
-
-  // Labels vazios para remover textos abaixo dos gráficos
   const labels = agrupados.map(() => "");
-
   const temperatura = agrupados.map((d) => d.temperatura);
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Configurações dos gráficos sem labels
+  // Configurações dos gráficos
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -255,7 +244,6 @@ export default function App() {
           title: (context) => {
             const index = context[0].dataIndex;
             const dataOriginal = agrupados[index];
-            // Mostra o horário exato do banco
             return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
@@ -320,7 +308,7 @@ export default function App() {
     }
   };
 
-  // Estilos completamente reformulados
+  // Estilos atualizados para melhor visibilidade
   const styles = {
     container: {
       minHeight: "100vh",
@@ -556,13 +544,15 @@ export default function App() {
       color: "white",
       boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
     },
+    // ALTURA AUMENTADA para o card do gráfico
     chartCard: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "15px",
       padding: isMobile ? "20px" : "25px",
       boxShadow: "0 8px 25px rgba(0, 0, 0, 0.1)",
-      height: isMobile ? "350px" : "400px",
+      height: isMobile ? "400px" : "450px", // Aumentei a altura
       marginBottom: isMobile ? "20px" : "25px",
+      minHeight: "400px", // Altura mínima garantida
     },
     chartHeader: {
       marginBottom: "20px",
@@ -574,6 +564,19 @@ export default function App() {
       fontWeight: "600",
       color: "#333",
     },
+    // NOVO: Container principal dos gráficos com mais espaço
+    chartsSection: {
+      marginBottom: isMobile ? "20px" : "30px",
+    },
+    // NOVO: Container do resumo com menos destaque
+    summaryCard: {
+      background: "rgba(255, 255, 255, 0.95)",
+      borderRadius: "15px",
+      padding: isMobile ? "20px" : "25px",
+      marginBottom: isMobile ? "20px" : "25px",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)", // Sombra mais suave
+      backdropFilter: "blur(10px)",
+    }
   };
 
   // Função para renderizar o gráfico ativo
@@ -811,9 +814,9 @@ export default function App() {
         )}
       </div>
 
-      {/* 📈 GRÁFICOS COM ABAS */}
+      {/* 📈 GRÁFICOS COM ABAS - SEÇÃO PRINCIPAL */}
       {agrupados.length > 0 && (
-        <div>
+        <div style={styles.chartsSection}>
           {/* ABAS DE NAVEGAÇÃO */}
           <div style={styles.tabsContainer}>
             {[
@@ -836,7 +839,7 @@ export default function App() {
             ))}
           </div>
 
-          {/* GRÁFICO ATIVO */}
+          {/* GRÁFICO ATIVO - CARD COM MAIOR DESTAQUE */}
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>
@@ -848,14 +851,15 @@ export default function App() {
             {renderActiveChart()}
           </div>
 
-          {/* 🗓️ INFORMAÇÕES DO PERÍODO */}
-          <div style={styles.card}>
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO - CARD SECUNDÁRIO */}
+          <div style={styles.summaryCard}>
             <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
             <div style={{ 
-              background: "linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))", 
+              background: "linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05))", 
               padding: "20px", 
               borderRadius: "12px",
-              fontSize: isMobile ? "0.85rem" : "0.95rem"
+              fontSize: isMobile ? "0.85rem" : "0.95rem",
+              border: "1px solid rgba(102, 126, 234, 0.1)"
             }}>
               {agrupados.length > 0 && (
                 <div style={{ 
