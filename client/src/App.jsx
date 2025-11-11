@@ -154,7 +154,7 @@ export default function App() {
       const dataOriginal = d.registro; // "2024-01-15T08:30:00"
       
       // Extrai apenas a parte da hora (YYYY-MM-DD HH:00)
-      const horaStr = dataOriginal.slice(0, 13) + ":00:00";
+      const horaStr = dataOriginal.slice(0, 13) + ":03:00";
 
       if (!mapa[horaStr]) {
         mapa[horaStr] = {
