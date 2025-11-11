@@ -13,8 +13,19 @@ export default function App() {
   const [erro, setErro] = useState("");
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
+
+  // Detecta se é mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 🔄 Carregar lista de equipamentos
   useEffect(() => {
@@ -25,22 +36,20 @@ export default function App() {
     setLoadingEquipamentos(true);
     try {
       const url = `${baseUrl}/api/equipamentos`;
-      console.log("📡 Buscando equipamentos:", url);
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar equipamentos");
       const json = await resp.json();
       
       const listaEquipamentos = json.equipamentos || [];
-      console.log("✅ Equipamentos carregados:", listaEquipamentos);
       setEquipamentos(listaEquipamentos);
       
+      // Seleciona o primeiro equipamento por padrão, se existir
       if (listaEquipamentos.length > 0 && !equipamento) {
         setEquipamento(listaEquipamentos[0]);
       }
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
-      setEquipamentos(["Pluviometro_01"]);
-      setErro("Erro ao carregar equipamentos. Usando equipamento padrão.");
+      setEquipamentos(["Pluviometro_01"]); // Fallback
     } finally {
       setLoadingEquipamentos(false);
     }
@@ -93,20 +102,11 @@ export default function App() {
     const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
     const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
 
-    console.log("🕒 Período rápido:", p);
-    console.log("📅 Data inicial:", inicioBanco);
-    console.log("📅 Data final:", finalBanco);
-
     carregarComDatas(inicioBanco, finalBanco);
   }
 
   // 🔄 Carregar da API com datas específicas
   async function carregarComDatas(inicial, final) {
-    if (!equipamento) {
-      setErro("Selecione um equipamento primeiro");
-      return;
-    }
-
     setLoading(true);
     setErro("");
     try {
@@ -115,20 +115,18 @@ export default function App() {
       if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
-      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
 
       const lista = json.dados || [];
-      console.log("✅ Dados recebidos:", lista.length, "registros");
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
       
     } catch (e) {
-      console.error("Erro:", e);
-      setErro("Falha ao carregar dados. Verifique a conexão com a API.");
+      setErro("Falha ao carregar dados. Verifique a API.");
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -136,11 +134,6 @@ export default function App() {
 
   // 🔄 Carregar da API usando os estados atuais
   async function carregar() {
-    if (!equipamento) {
-      setErro("Selecione um equipamento primeiro");
-      return;
-    }
-
     setLoading(true);
     setErro("");
     try {
@@ -153,19 +146,17 @@ export default function App() {
       if (dataFinalBanco) params.append("data_final", dataFinalBanco);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
-      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
 
       const lista = json.dados || [];
-      console.log("✅ Dados recebidos:", lista.length, "registros");
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
     } catch (e) {
-      console.error("Erro:", e);
-      setErro("Falha ao carregar dados. Verifique a conexão com a API.");
+      setErro("Falha ao carregar dados. Verifique a API.");
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -175,28 +166,20 @@ export default function App() {
     setDataInicial("");
     setDataFinal("");
     setPeriodo("");
-    if (equipamento) {
-      carregar();
-    }
+    carregar();
   }
 
-  // Carregar dados quando equipamento mudar
   useEffect(() => {
     if (equipamento) {
-      console.log("🔄 Equipamento alterado para:", equipamento);
       carregar();
     }
   }, [equipamento]);
 
-  // 🧮 Agrupar por hora
+  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
   function agruparPorHora(lista) {
-    if (!lista || lista.length === 0) return [];
-
     const mapa = {};
 
     lista.forEach((d) => {
-      if (!d.registro) return;
-      
       // Usa o horário exato que veio do banco
       const registro = d.registro;
       
@@ -249,7 +232,7 @@ export default function App() {
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Configurações dos gráficos
+  // Configurações dos gráficos sem labels
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -264,6 +247,7 @@ export default function App() {
           title: (context) => {
             const index = context[0].dataIndex;
             const dataOriginal = agrupados[index];
+            // Mostra o horário exato do banco
             return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
@@ -292,7 +276,7 @@ export default function App() {
         },
         ticks: {
           font: {
-            size: 12
+            size: isMobile ? 10 : 12
           },
           callback: function(value) {
             return value.toFixed(2);
@@ -318,7 +302,7 @@ export default function App() {
         },
         ticks: {
           font: {
-            size: 12
+            size: isMobile ? 10 : 12
           },
           callback: function(value) {
             return value.toFixed(2);
@@ -328,32 +312,31 @@ export default function App() {
     }
   };
 
-  // Estilos para desktop
+  // Estilos responsivos
   const styles = {
     container: {
       minHeight: "100vh",
       background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      padding: "20px",
+      padding: isMobile ? "10px" : "20px",
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-      minWidth: "1200px",
     },
     header: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "16px",
-      padding: "24px",
-      marginBottom: "24px",
+      padding: isMobile ? "16px" : "24px",
+      marginBottom: isMobile ? "16px" : "24px",
       boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
     },
     headerContent: {
       display: "flex",
-      flexDirection: "row",
+      flexDirection: isMobile ? "column" : "row",
       justifyContent: "space-between",
-      alignItems: "center",
+      alignItems: isMobile ? "flex-start" : "center",
       gap: "16px",
     },
     title: {
       margin: 0,
-      fontSize: "2rem",
+      fontSize: isMobile ? "1.5rem" : "2rem",
       fontWeight: "700",
       background: "linear-gradient(135deg, #667eea, #764ba2)",
       WebkitBackgroundClip: "text",
@@ -362,34 +345,34 @@ export default function App() {
     subtitle: {
       margin: "4px 0 0 0",
       color: "#666",
-      fontSize: "1rem",
+      fontSize: isMobile ? "0.9rem" : "1rem",
     },
     weatherCard: {
       display: "flex",
-      gap: "32px",
+      gap: isMobile ? "20px" : "32px",
       background: "linear-gradient(135deg, #667eea, #764ba2)",
-      padding: "16px 24px",
+      padding: isMobile ? "12px 16px" : "16px 24px",
       borderRadius: "12px",
       color: "white",
-      width: "auto",
-      justifyContent: "flex-start",
+      width: isMobile ? "100%" : "auto",
+      justifyContent: isMobile ? "space-around" : "flex-start",
     },
     card: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "12px",
-      padding: "20px",
-      marginBottom: "20px",
+      padding: isMobile ? "16px" : "20px",
+      marginBottom: isMobile ? "16px" : "20px",
       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
     },
     cardTitle: {
       margin: "0 0 16px 0",
-      fontSize: "1.2rem",
+      fontSize: isMobile ? "1.1rem" : "1.2rem",
       fontWeight: "600",
       color: "#333",
     },
     formGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
       gap: "12px",
       marginBottom: "16px",
     },
@@ -401,26 +384,26 @@ export default function App() {
       marginBottom: "6px",
       fontWeight: "500",
       color: "#555",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
     },
     input: {
       padding: "10px",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       backgroundColor: "white",
     },
     select: {
       padding: "10px",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       backgroundColor: "white",
       cursor: "pointer",
     },
     buttonGroup: {
       display: "flex",
-      flexDirection: "row",
+      flexDirection: isMobile ? "column" : "row",
       gap: "10px",
     },
     primaryButton: {
@@ -429,9 +412,10 @@ export default function App() {
       color: "white",
       border: "none",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
+      flex: isMobile ? "1" : "none",
       transition: "all 0.3s ease",
     },
     secondaryButton: {
@@ -440,14 +424,15 @@ export default function App() {
       color: "#666",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       fontWeight: "600",
       cursor: "pointer",
+      flex: isMobile ? "1" : "none",
       transition: "all 0.3s ease",
     },
     quickFilters: {
       display: "flex",
-      flexDirection: "row",
+      flexDirection: isMobile ? "column" : "row",
       gap: "10px",
       flexWrap: "wrap",
     },
@@ -456,9 +441,10 @@ export default function App() {
       background: "transparent",
       border: "1px solid #ddd",
       borderRadius: "6px",
-      fontSize: "0.9rem",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
       cursor: "pointer",
       textAlign: "center",
+      flex: isMobile ? "1" : "none",
       transition: "all 0.3s ease",
     },
     quickFilterActive: {
@@ -475,7 +461,7 @@ export default function App() {
       borderRadius: "8px",
       color: "#666",
       justifyContent: "center",
-      fontSize: "1rem",
+      fontSize: isMobile ? "0.9rem" : "1rem",
     },
     spinner: {
       width: "18px",
@@ -492,7 +478,7 @@ export default function App() {
       borderRadius: "8px",
       color: "#d63031",
       textAlign: "center",
-      fontSize: "1rem",
+      fontSize: isMobile ? "0.9rem" : "1rem",
     },
     emptyState: {
       textAlign: "center",
@@ -503,16 +489,16 @@ export default function App() {
     },
     chartsGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: "20px",
-      marginBottom: "20px",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+      gap: isMobile ? "16px" : "20px",
+      marginBottom: isMobile ? "16px" : "20px",
     },
     chartCard: {
       background: "rgba(255, 255, 255, 0.95)",
       borderRadius: "12px",
-      padding: "20px",
+      padding: isMobile ? "16px" : "20px",
       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
-      height: "350px",
+      height: isMobile ? "300px" : "350px",
     },
     chartHeader: {
       marginBottom: "16px",
@@ -520,7 +506,7 @@ export default function App() {
     },
     chartTitle: {
       margin: 0,
-      fontSize: "1.1rem",
+      fontSize: isMobile ? "1rem" : "1.1rem",
       fontWeight: "600",
       color: "#333",
     },
@@ -538,12 +524,12 @@ export default function App() {
           {!loading && !erro && agrupados.length > 0 && (
             <div style={styles.weatherCard}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>Total de Chuva</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>{totalChuva.toFixed(2)} mm</div>
+                <div style={{ fontSize: isMobile ? "0.7rem" : "0.8rem", opacity: 0.9 }}>Total de Chuva</div>
+                <div style={{ fontSize: isMobile ? "1.1rem" : "1.3rem", fontWeight: "bold" }}>{totalChuva.toFixed(2)} mm</div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>Período</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>{agrupados.length}h</div>
+                <div style={{ fontSize: isMobile ? "0.7rem" : "0.8rem", opacity: 0.9 }}>Período</div>
+                <div style={{ fontSize: isMobile ? "1.1rem" : "1.3rem", fontWeight: "bold" }}>{agrupados.length}h</div>
               </div>
             </div>
           )}
@@ -773,7 +759,7 @@ export default function App() {
               background: "rgba(102, 126, 234, 0.1)", 
               padding: "12px", 
               borderRadius: "8px",
-              fontSize: "0.9rem"
+              fontSize: isMobile ? "0.8rem" : "0.9rem"
             }}>
               {agrupados.length > 0 && (
                 <>
@@ -797,12 +783,10 @@ export default function App() {
           100% { transform: rotate(360deg); }
         }
         
-        /* Forçar comportamento desktop */
-        body {
-          margin: 0;
-          padding: 0;
-          min-width: 1200px;
-          overflow-x: auto;
+        @media (max-width: 768px) {
+          input[type="datetime-local"] {
+            font-size: 16px;
+          }
         }
       `}</style>
     </div>
