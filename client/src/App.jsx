@@ -14,7 +14,7 @@ export default function App() {
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
 
-  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:10000";
+  const baseUrl = import.meta.env.VITE_API_URL || "";
 
   // 🔄 Carregar lista de equipamentos
   useEffect(() => {
