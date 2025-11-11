@@ -519,7 +519,7 @@ export default function App() {
         <div style={styles.headerContent}>
           <div>
             <h1 style={styles.title}>🌦️ Fazenda Ribeirão Preto</h1>
-            <p style={styles.subtitle}>Monitoramento Meteorológico em Tempo Real</p>
+            <p style={styles.subtitle}>Monitoramento Meteorológico</p>
           </div>
           {!loading && !erro && agrupados.length > 0 && (
             <div style={styles.weatherCard}>
