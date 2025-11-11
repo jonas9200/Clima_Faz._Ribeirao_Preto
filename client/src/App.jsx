@@ -518,7 +518,7 @@ export default function App() {
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div>
-            <h1 style={styles.title}>🌦️ AGS Clima</h1>
+            <h1 style={styles.title}>🌦️ Fazenda Ribeirão Preto</h1>
             <p style={styles.subtitle}>Monitoramento Meteorológico em Tempo Real</p>
           </div>
           {!loading && !erro && agrupados.length > 0 && (
@@ -770,7 +770,6 @@ export default function App() {
                 </>
               )}
               <div style={{ marginTop: "8px", fontStyle: "italic" }}>
-                Passe o mouse sobre os gráficos para ver os valores e datas específicas
               </div>
             </div>
           </div>
