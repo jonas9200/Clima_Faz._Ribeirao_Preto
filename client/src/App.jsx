@@ -41,7 +41,7 @@ export default function App() {
     const agora = new Date();
     const inicio = new Date(agora);
 
-    if (p === "24h") inicio.setHours(inicio.getHours() - 24);
+    if (p === "1d") inicio.setHours(inicio.getHours() - 1);
     if (p === "7d") inicio.setDate(inicio.getDate() - 7);
     if (p === "30d") inicio.setDate(inicio.getDate() - 30);
 
@@ -540,9 +540,9 @@ export default function App() {
           <button
             style={{
               ...styles.quickFilterButton,
-              ...(periodo === "24h" ? styles.quickFilterActive : {})
+              ...(periodo === "1d" ? styles.quickFilterActive : {})
             }}
-            onClick={() => calcularPeriodoRapido("24h")}
+            onClick={() => calcularPeriodoRapido("1d")}
           >
             ⏰ Últimas 24h
           </button>
