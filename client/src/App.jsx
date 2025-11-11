@@ -14,7 +14,7 @@ export default function App() {
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
 
-  const baseUrl = import.meta.env.VITE_API_URL || "";
+  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:10000";
 
   // 🔄 Carregar lista de equipamentos
   useEffect(() => {
@@ -25,11 +25,13 @@ export default function App() {
     setLoadingEquipamentos(true);
     try {
       const url = `${baseUrl}/api/equipamentos`;
+      console.log("📡 Buscando equipamentos:", url);
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar equipamentos");
       const json = await resp.json();
       
       const listaEquipamentos = json.equipamentos || [];
+      console.log("✅ Equipamentos carregados:", listaEquipamentos);
       setEquipamentos(listaEquipamentos);
       
       if (listaEquipamentos.length > 0 && !equipamento) {
@@ -38,6 +40,7 @@ export default function App() {
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
       setEquipamentos(["Pluviometro_01"]);
+      setErro("Erro ao carregar equipamentos. Usando equipamento padrão.");
     } finally {
       setLoadingEquipamentos(false);
     }
@@ -90,11 +93,20 @@ export default function App() {
     const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
     const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
 
+    console.log("🕒 Período rápido:", p);
+    console.log("📅 Data inicial:", inicioBanco);
+    console.log("📅 Data final:", finalBanco);
+
     carregarComDatas(inicioBanco, finalBanco);
   }
 
   // 🔄 Carregar da API com datas específicas
   async function carregarComDatas(inicial, final) {
+    if (!equipamento) {
+      setErro("Selecione um equipamento primeiro");
+      return;
+    }
+
     setLoading(true);
     setErro("");
     try {
@@ -103,18 +115,20 @@ export default function App() {
       if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
 
       const lista = json.dados || [];
+      console.log("✅ Dados recebidos:", lista.length, "registros");
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
       
     } catch (e) {
-      setErro("Falha ao carregar dados. Verifique a API.");
-      console.error(e);
+      console.error("Erro:", e);
+      setErro("Falha ao carregar dados. Verifique a conexão com a API.");
     } finally {
       setLoading(false);
     }
@@ -122,6 +136,11 @@ export default function App() {
 
   // 🔄 Carregar da API usando os estados atuais
   async function carregar() {
+    if (!equipamento) {
+      setErro("Selecione um equipamento primeiro");
+      return;
+    }
+
     setLoading(true);
     setErro("");
     try {
@@ -134,17 +153,19 @@ export default function App() {
       if (dataFinalBanco) params.append("data_final", dataFinalBanco);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+      console.log("📡 Buscando dados:", url);
 
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
 
       const lista = json.dados || [];
+      console.log("✅ Dados recebidos:", lista.length, "registros");
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
     } catch (e) {
-      setErro("Falha ao carregar dados. Verifique a API.");
-      console.error(e);
+      console.error("Erro:", e);
+      setErro("Falha ao carregar dados. Verifique a conexão com a API.");
     } finally {
       setLoading(false);
     }
@@ -154,21 +175,28 @@ export default function App() {
     setDataInicial("");
     setDataFinal("");
     setPeriodo("");
-    carregar();
+    if (equipamento) {
+      carregar();
+    }
   }
 
   // Carregar dados quando equipamento mudar
   useEffect(() => {
     if (equipamento) {
+      console.log("🔄 Equipamento alterado para:", equipamento);
       carregar();
     }
   }, [equipamento]);
 
-  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
+  // 🧮 Agrupar por hora
   function agruparPorHora(lista) {
+    if (!lista || lista.length === 0) return [];
+
     const mapa = {};
 
     lista.forEach((d) => {
+      if (!d.registro) return;
+      
       // Usa o horário exato que veio do banco
       const registro = d.registro;
       
@@ -770,7 +798,9 @@ export default function App() {
         }
         
         /* Forçar comportamento desktop */
-        html, body {
+        body {
+          margin: 0;
+          padding: 0;
           min-width: 1200px;
           overflow-x: auto;
         }
