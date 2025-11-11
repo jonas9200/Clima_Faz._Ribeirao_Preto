@@ -4,10 +4,12 @@ import "chart.js/auto";
 
 export default function App() {
   const [dados, setDados] = useState([]);
-  const [equipamento, setEquipamento] = useState("Pluviometro_01");
+  const [equipamentos, setEquipamentos] = useState([]);
+  const [equipamento, setEquipamento] = useState("");
   const [dataInicial, setDataInicial] = useState("");
   const [dataFinal, setDataFinal] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingEquipamentos, setLoadingEquipamentos] = useState(false);
   const [erro, setErro] = useState("");
   const [periodo, setPeriodo] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
@@ -24,6 +26,34 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 🔄 Carregar lista de equipamentos
+  useEffect(() => {
+    carregarEquipamentos();
+  }, []);
+
+  async function carregarEquipamentos() {
+    setLoadingEquipamentos(true);
+    try {
+      const url = `${baseUrl}/api/equipamentos`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro ao buscar equipamentos");
+      const json = await resp.json();
+      
+      const listaEquipamentos = json.equipamentos || [];
+      setEquipamentos(listaEquipamentos);
+      
+      // Seleciona o primeiro equipamento por padrão, se existir
+      if (listaEquipamentos.length > 0 && !equipamento) {
+        setEquipamento(listaEquipamentos[0]);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar equipamentos:", e);
+      setEquipamentos(["Pluviometro_01"]); // Fallback
+    } finally {
+      setLoadingEquipamentos(false);
+    }
+  }
 
   // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
@@ -140,7 +170,9 @@ export default function App() {
   }
 
   useEffect(() => {
-    carregar();
+    if (equipamento) {
+      carregar();
+    }
   }, [equipamento]);
 
   // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
@@ -361,6 +393,14 @@ export default function App() {
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       backgroundColor: "white",
     },
+    select: {
+      padding: "10px",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      backgroundColor: "white",
+      cursor: "pointer",
+    },
     buttonGroup: {
       display: "flex",
       flexDirection: isMobile ? "column" : "row",
@@ -503,12 +543,25 @@ export default function App() {
         <div style={styles.formGrid}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Equipamento</label>
-            <input
-              style={styles.input}
-              value={equipamento}
-              onChange={(e) => setEquipamento(e.target.value)}
-              placeholder="Nome do equipamento"
-            />
+            {loadingEquipamentos ? (
+              <div style={styles.loading}>
+                <div style={styles.spinner}></div>
+                <span>Carregando equipamentos...</span>
+              </div>
+            ) : (
+              <select
+                style={styles.select}
+                value={equipamento}
+                onChange={(e) => setEquipamento(e.target.value)}
+              >
+                <option value="">Selecione um equipamento</option>
+                {equipamentos.map((eqp) => (
+                  <option key={eqp} value={eqp}>
+                    {eqp}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div style={styles.formGroup}>
@@ -538,6 +591,7 @@ export default function App() {
             onClick={() => carregar()}
             onMouseOver={(e) => e.target.style.opacity = "0.8"}
             onMouseOut={(e) => e.target.style.opacity = "1"}
+            disabled={!equipamento}
           >
             🔍 Aplicar Filtros
           </button>
@@ -564,6 +618,7 @@ export default function App() {
             onClick={() => calcularPeriodoRapido("24h")}
             onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
             onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
+            disabled={!equipamento}
           >
             ⏰ Últimas 24h
           </button>
@@ -575,6 +630,7 @@ export default function App() {
             onClick={() => calcularPeriodoRapido("7d")}
             onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
             onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
+            disabled={!equipamento}
           >
             📅 Última Semana
           </button>
@@ -586,6 +642,7 @@ export default function App() {
             onClick={() => calcularPeriodoRapido("30d")}
             onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f5f5f5")}
             onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
+            disabled={!equipamento}
           >
             📊 Último Mês
           </button>
@@ -607,11 +664,19 @@ export default function App() {
           </div>
         )}
 
-        {!loading && !erro && agrupados.length === 0 && (
+        {!loading && !erro && agrupados.length === 0 && equipamento && (
           <div style={styles.emptyState}>
             <div style={{ fontSize: "3rem", marginBottom: "10px" }}>📈</div>
             <h3>Nenhum dado encontrado</h3>
             <p>Não há dados disponíveis para os filtros selecionados.</p>
+          </div>
+        )}
+
+        {!equipamento && (
+          <div style={styles.emptyState}>
+            <div style={{ fontSize: "3rem", marginBottom: "10px" }}>📡</div>
+            <h3>Selecione um equipamento</h3>
+            <p>Escolha um equipamento da lista para visualizar os dados.</p>
           </div>
         )}
       </div>
@@ -698,6 +763,7 @@ export default function App() {
             }}>
               {agrupados.length > 0 && (
                 <>
+                  <div><strong>Equipamento:</strong> {equipamento}</div>
                   <div><strong>Data inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>Data final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>Total de horas:</strong> {agrupados.length} horas</div>
