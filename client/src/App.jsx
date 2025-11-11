@@ -25,18 +25,29 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Função para converter data local para formato ISO sem timezone
-  function toLocalISOString(date) {
-    const offset = date.getTimezoneOffset();
-    const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
-    return adjustedDate.toISOString().slice(0, 16);
+  // Função para formatar data para o input datetime-local (YYYY-MM-DDTHH:MM)
+  function toLocalDatetimeString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  // Função para converter de input datetime-local para ISO
+  // Função para converter de input datetime-local para ISO (considerando fuso local)
   function fromLocalInputToISO(datetimeString) {
     if (!datetimeString) return '';
+    
+    // Cria uma data no fuso horário local
     const date = new Date(datetimeString);
-    return date.toISOString().slice(0, 19);
+    
+    // Ajusta para UTC mantendo o mesmo horário visual
+    const timezoneOffset = date.getTimezoneOffset() * 60000;
+    const adjustedDate = new Date(date.getTime() - timezoneOffset);
+    
+    return adjustedDate.toISOString().slice(0, 19);
   }
 
   // 📆 Filtros rápidos
@@ -48,9 +59,14 @@ export default function App() {
     if (p === "7d") inicio.setDate(inicio.getDate() - 7);
     if (p === "30d") inicio.setDate(inicio.getDate() - 30);
 
-    // Converte para o formato do input datetime-local
-    const inicioLocal = toLocalISOString(inicio);
-    const finalLocal = toLocalISOString(agora);
+    // Usa horário local para os inputs
+    const inicioLocal = toLocalDatetimeString(inicio);
+    const finalLocal = toLocalDatetimeString(agora);
+
+    console.log("🕒 Período rápido:", p);
+    console.log("⏰ Agora (local):", toLocalDatetimeString(agora));
+    console.log("⏰ Início (local):", inicioLocal);
+    console.log("⏰ Final (local):", finalLocal);
 
     // Atualiza os estados primeiro
     setDataInicial(inicioLocal);
@@ -61,9 +77,6 @@ export default function App() {
     const inicioISO = fromLocalInputToISO(inicioLocal);
     const finalISO = fromLocalInputToISO(finalLocal);
     
-    console.log("🕒 Período rápido:", p);
-    console.log("📅 Data inicial (local):", inicioLocal);
-    console.log("📅 Data final (local):", finalLocal);
     console.log("🌐 Data inicial (ISO):", inicioISO);
     console.log("🌐 Data final (ISO):", finalISO);
     
@@ -91,6 +104,11 @@ export default function App() {
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
       console.log("✅ Dados carregados:", lista.length, "registros");
+      
+      if (lista.length > 0) {
+        console.log("📅 Primeiro registro:", new Date(lista[0].registro).toLocaleString('pt-BR'));
+        console.log("📅 Último registro:", new Date(lista[lista.length - 1].registro).toLocaleString('pt-BR'));
+      }
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
@@ -106,9 +124,9 @@ export default function App() {
     try {
       const params = new URLSearchParams({ equipamento });
       
-      // Converte as datas do formato local para ISO se necessário
-      const dataInicialISO = dataInicial.includes('T') ? fromLocalInputToISO(dataInicial) : dataInicial;
-      const dataFinalISO = dataFinal.includes('T') ? fromLocalInputToISO(dataFinal) : dataFinal;
+      // Converte as datas do formato local para ISO
+      const dataInicialISO = dataInicial ? fromLocalInputToISO(dataInicial) : '';
+      const dataFinalISO = dataFinal ? fromLocalInputToISO(dataFinal) : '';
       
       if (dataInicialISO) params.append("data_inicial", dataInicialISO);
       if (dataFinalISO) params.append("data_final", dataFinalISO);
@@ -123,7 +141,6 @@ export default function App() {
       const lista = json.dados || [];
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
-      console.log("✅ Dados carregados:", lista.length, "registros");
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
@@ -149,7 +166,12 @@ export default function App() {
 
     lista.forEach((d) => {
       const data = new Date(d.registro);
-      const horaStr = data.toISOString().slice(0, 13) + ":00";
+      // Usa o horário local para agrupamento
+      const year = data.getFullYear();
+      const month = String(data.getMonth() + 1).padStart(2, '0');
+      const day = String(data.getDate()).padStart(2, '0');
+      const hours = String(data.getHours()).padStart(2, '0');
+      const horaStr = `${year}-${month}-${day} ${hours}:00`;
 
       if (!mapa[horaStr]) {
         mapa[horaStr] = {
@@ -199,7 +221,7 @@ export default function App() {
           title: (context) => {
             const index = context[0].dataIndex;
             const dataOriginal = agrupados[index];
-            return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
+            return new Date(dataOriginal.hora + ':00').toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
               year: 'numeric',
@@ -263,7 +285,7 @@ export default function App() {
     }
   };
 
-  // Estilos responsivos
+  // Estilos responsivos (mantidos iguais)
   const styles = {
     container: {
       minHeight: "100vh",
@@ -659,8 +681,8 @@ export default function App() {
               borderRadius: "8px",
               fontSize: isMobile ? "0.8rem" : "0.9rem"
             }}>
-              <div><strong>Data inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
-              <div><strong>Data final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
+              <div><strong>Data inicial:</strong> {agrupados[0]?.hora ? new Date(agrupados[0].hora + ':00').toLocaleString('pt-BR') : 'N/A'}</div>
+              <div><strong>Data final:</strong> {agrupados[agrupados.length - 1]?.hora ? new Date(agrupados[agrupados.length - 1].hora + ':00').toLocaleString('pt-BR') : 'N/A'}</div>
               <div style={{ marginTop: "8px", fontStyle: "italic" }}>
                 Passe o mouse sobre os gráficos para ver os valores e datas específicas
               </div>
