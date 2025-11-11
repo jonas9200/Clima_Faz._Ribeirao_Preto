@@ -25,12 +25,32 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Função simples para formatar data para input datetime-local
+  // Função para formatar data para o input datetime-local (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
-    return date.toISOString().slice(0, 16);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  // 📆 Filtros rápidos - CORRIGIDO
+  // Função para converter de input datetime-local para ISO (considerando fuso local)
+  function fromLocalInputToISO(datetimeString) {
+    if (!datetimeString) return '';
+    
+    // Cria uma data no fuso horário local
+    const date = new Date(datetimeString);
+    
+    // Ajusta para UTC mantendo o mesmo horário visual
+    const timezoneOffset = date.getTimezoneOffset() * 60000;
+    const adjustedDate = new Date(date.getTime() - timezoneOffset);
+    
+    return adjustedDate.toISOString().slice(0, 19);
+  }
+
+  // 📆 Filtros rápidos
   function calcularPeriodoRapido(p) {
     const agora = new Date();
     const inicio = new Date(agora);
@@ -39,28 +59,28 @@ export default function App() {
     if (p === "7d") inicio.setDate(inicio.getDate() - 7);
     if (p === "30d") inicio.setDate(inicio.getDate() - 30);
 
-    // Usa ISO string diretamente (já está no formato correto para o input)
+    // Usa horário local para os inputs
     const inicioLocal = toLocalDatetimeString(inicio);
     const finalLocal = toLocalDatetimeString(agora);
 
     console.log("🕒 Período rápido:", p);
-    console.log("⏰ Agora:", agora.toLocaleString('pt-BR'));
-    console.log("⏰ Início 24h atrás:", inicio.toLocaleString('pt-BR'));
-    console.log("📅 Input inicial:", inicioLocal);
-    console.log("📅 Input final:", finalLocal);
+    console.log("⏰ Agora (local):", toLocalDatetimeString(agora));
+    console.log("⏰ Início (local):", inicioLocal);
+    console.log("⏰ Final (local):", finalLocal);
 
-    // Atualiza os estados
+    // Atualiza os estados primeiro
     setDataInicial(inicioLocal);
     setDataFinal(finalLocal);
     setPeriodo(p);
 
-    // Para a API, usa ISO string completa
-    const inicioISO = inicio.toISOString().slice(0, 19);
-    const finalISO = agora.toISOString().slice(0, 19);
+    // Converte para ISO antes de enviar para a API
+    const inicioISO = fromLocalInputToISO(inicioLocal);
+    const finalISO = fromLocalInputToISO(finalLocal);
     
-    console.log("🌐 API - Início:", inicioISO);
-    console.log("🌐 API - Final:", finalISO);
+    console.log("🌐 Data inicial (ISO):", inicioISO);
+    console.log("🌐 Data final (ISO):", finalISO);
     
+    // Chama carregar com as datas ISO
     carregarComDatas(inicioISO, finalISO);
   }
 
@@ -83,13 +103,15 @@ export default function App() {
       const lista = json.dados || [];
       setDados(lista);
       setTotalChuva(json.total_chuva || 0);
-      
       console.log("✅ Dados carregados:", lista.length, "registros");
+      
       if (lista.length > 0) {
-        const primeiro = new Date(lista[0].registro);
-        const ultimo = new Date(lista[lista.length - 1].registro);
-        console.log("📅 Primeiro registro:", primeiro.toLocaleString('pt-BR'));
-        console.log("📅 Último registro:", ultimo.toLocaleString('pt-BR'));
+        const primeiroRegistro = new Date(lista[0].registro);
+        const ultimoRegistro = new Date(lista[lista.length - 1].registro);
+        console.log("📅 Primeiro registro (UTC):", lista[0].registro);
+        console.log("📅 Primeiro registro (local):", primeiroRegistro.toLocaleString('pt-BR'));
+        console.log("📅 Último registro (UTC):", lista[lista.length - 1].registro);
+        console.log("📅 Último registro (local):", ultimoRegistro.toLocaleString('pt-BR'));
       }
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
@@ -106,9 +128,9 @@ export default function App() {
     try {
       const params = new URLSearchParams({ equipamento });
       
-      // Converte do input para ISO
-      const dataInicialISO = dataInicial ? new Date(dataInicial).toISOString().slice(0, 19) : '';
-      const dataFinalISO = dataFinal ? new Date(dataFinal).toISOString().slice(0, 19) : '';
+      // Converte as datas do formato local para ISO
+      const dataInicialISO = dataInicial ? fromLocalInputToISO(dataInicial) : '';
+      const dataFinalISO = dataFinal ? fromLocalInputToISO(dataFinal) : '';
       
       if (dataInicialISO) params.append("data_inicial", dataInicialISO);
       if (dataFinalISO) params.append("data_final", dataFinalISO);
@@ -155,6 +177,7 @@ export default function App() {
       const day = String(data.getDate()).padStart(2, '0');
       const hours = String(data.getHours()).padStart(2, '0');
       
+      // Chave de agrupamento no formato local
       const horaStr = `${year}-${month}-${day} ${hours}:00`;
 
       if (!mapa[horaStr]) {
@@ -163,7 +186,7 @@ export default function App() {
           somaTemp: 0,
           somaUmid: 0,
           somaChuva: 0,
-          timestamp: data.getTime() // Guarda o timestamp para ordenação
+          timestamp: data.getTime() // Mantém o timestamp para ordenação
         };
       }
 
@@ -173,11 +196,14 @@ export default function App() {
       mapa[horaStr].somaChuva += Number(d.chuva) || 0;
     });
 
-    // Ordena pelo timestamp
-    const horasOrdenadas = Object.keys(mapa).sort((a, b) => mapa[a].timestamp - mapa[b].timestamp);
-    
+    // Ordena pelos timestamps
+    const horasOrdenadas = Object.keys(mapa).sort((a, b) => 
+      mapa[a].timestamp - mapa[b].timestamp
+    );
+
     return horasOrdenadas.map((h) => ({
       hora: h,
+      timestamp: mapa[h].timestamp,
       temperatura: Number((mapa[h].somaTemp / mapa[h].count).toFixed(2)),
       umidade: Number((mapa[h].somaUmid / mapa[h].count).toFixed(2)),
       chuva: Number(mapa[h].somaChuva.toFixed(2)),
@@ -212,8 +238,8 @@ export default function App() {
             const [datePart, timePart] = dataOriginal.hora.split(' ');
             const [year, month, day] = datePart.split('-');
             const [hours] = timePart.split(':');
-            const dataLocal = new Date(year, month - 1, day, hours);
             
+            const dataLocal = new Date(year, month - 1, day, hours);
             return dataLocal.toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
@@ -278,7 +304,7 @@ export default function App() {
     }
   };
 
-  // Estilos responsivos (mantidos iguais)
+  // Estilos responsivos
   const styles = {
     container: {
       minHeight: "100vh",
@@ -674,8 +700,12 @@ export default function App() {
               borderRadius: "8px",
               fontSize: isMobile ? "0.8rem" : "0.9rem"
             }}>
-              <div><strong>Data inicial:</strong> {agrupados[0]?.hora ? new Date(agrupados[0].hora.replace(' ', 'T') + ':00').toLocaleString('pt-BR') : 'N/A'}</div>
-              <div><strong>Data final:</strong> {agrupados[agrupados.length - 1]?.hora ? new Date(agrupados[agrupados.length - 1].hora.replace(' ', 'T') + ':00').toLocaleString('pt-BR') : 'N/A'}</div>
+              {agrupados.length > 0 && (
+                <>
+                  <div><strong>Data inicial:</strong> {agrupados[0].hora.replace(' ', ' às ')}</div>
+                  <div><strong>Data final:</strong> {agrupados[agrupados.length - 1].hora.replace(' ', ' às ')}</div>
+                </>
+              )}
               <div style={{ marginTop: "8px", fontStyle: "italic" }}>
                 Passe o mouse sobre os gráficos para ver os valores e datas específicas
               </div>
