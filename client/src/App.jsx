@@ -36,20 +36,6 @@ export default function App() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  // Função para converter de input datetime-local para ISO (considerando fuso local)
-  function fromLocalInputToISO(datetimeString) {
-    if (!datetimeString) return '';
-    
-    // Cria uma data no fuso horário local
-    const date = new Date(datetimeString);
-    
-    // Ajusta para UTC mantendo o mesmo horário visual
-    const timezoneOffset = date.getTimezoneOffset() * 60000;
-    const adjustedDate = new Date(date.getTime() - timezoneOffset);
-    
-    return adjustedDate.toISOString().slice(0, 19);
-  }
-
   // 📆 Filtros rápidos
   function calcularPeriodoRapido(p) {
     const agora = new Date();
@@ -64,7 +50,6 @@ export default function App() {
     const finalLocal = toLocalDatetimeString(agora);
 
     console.log("🕒 Período rápido:", p);
-    console.log("⏰ Agora (local):", toLocalDatetimeString(agora));
     console.log("⏰ Início (local):", inicioLocal);
     console.log("⏰ Final (local):", finalLocal);
 
@@ -73,9 +58,9 @@ export default function App() {
     setDataFinal(finalLocal);
     setPeriodo(p);
 
-    // Converte para ISO antes de enviar para a API
-    const inicioISO = fromLocalInputToISO(inicioLocal);
-    const finalISO = fromLocalInputToISO(finalLocal);
+    // Converte para ISO - mantém o horário visual
+    const inicioISO = inicio.toISOString().slice(0, 19);
+    const finalISO = agora.toISOString().slice(0, 19);
     
     console.log("🌐 Data inicial (ISO):", inicioISO);
     console.log("🌐 Data final (ISO):", finalISO);
@@ -106,12 +91,8 @@ export default function App() {
       console.log("✅ Dados carregados:", lista.length, "registros");
       
       if (lista.length > 0) {
-        const primeiroRegistro = new Date(lista[0].registro);
-        const ultimoRegistro = new Date(lista[lista.length - 1].registro);
-        console.log("📅 Primeiro registro (UTC):", lista[0].registro);
-        console.log("📅 Primeiro registro (local):", primeiroRegistro.toLocaleString('pt-BR'));
-        console.log("📅 Último registro (UTC):", lista[lista.length - 1].registro);
-        console.log("📅 Último registro (local):", ultimoRegistro.toLocaleString('pt-BR'));
+        console.log("📅 Primeiro registro do banco:", lista[0].registro);
+        console.log("📅 Último registro do banco:", lista[lista.length - 1].registro);
       }
     } catch (e) {
       setErro("Falha ao carregar dados. Verifique a API.");
@@ -129,8 +110,8 @@ export default function App() {
       const params = new URLSearchParams({ equipamento });
       
       // Converte as datas do formato local para ISO
-      const dataInicialISO = dataInicial ? fromLocalInputToISO(dataInicial) : '';
-      const dataFinalISO = dataFinal ? fromLocalInputToISO(dataFinal) : '';
+      const dataInicialISO = dataInicial ? new Date(dataInicial).toISOString().slice(0, 19) : '';
+      const dataFinalISO = dataFinal ? new Date(dataFinal).toISOString().slice(0, 19) : '';
       
       if (dataInicialISO) params.append("data_inicial", dataInicialISO);
       if (dataFinalISO) params.append("data_final", dataFinalISO);
@@ -164,21 +145,16 @@ export default function App() {
     carregar();
   }, [equipamento]);
 
-  // 🧮 Agrupar por hora - CORRIGIDO para usar horário local
+  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
   function agruparPorHora(lista) {
     const mapa = {};
 
     lista.forEach((d) => {
-      const data = new Date(d.registro);
+      // Usa o horário exato que veio do banco
+      const dataOriginal = d.registro; // "2024-01-15T08:30:00"
       
-      // Usa métodos locais para obter data/hora no fuso local
-      const year = data.getFullYear();
-      const month = String(data.getMonth() + 1).padStart(2, '0');
-      const day = String(data.getDate()).padStart(2, '0');
-      const hours = String(data.getHours()).padStart(2, '0');
-      
-      // Chave de agrupamento no formato local
-      const horaStr = `${year}-${month}-${day} ${hours}:00`;
+      // Extrai apenas a parte da hora (YYYY-MM-DD HH:00)
+      const horaStr = dataOriginal.slice(0, 13) + ":00:00";
 
       if (!mapa[horaStr]) {
         mapa[horaStr] = {
@@ -186,7 +162,7 @@ export default function App() {
           somaTemp: 0,
           somaUmid: 0,
           somaChuva: 0,
-          timestamp: data.getTime() // Mantém o timestamp para ordenação
+          timestamp: new Date(dataOriginal).getTime()
         };
       }
 
@@ -234,13 +210,8 @@ export default function App() {
           title: (context) => {
             const index = context[0].dataIndex;
             const dataOriginal = agrupados[index];
-            // Converte a string de hora local para Date e formata
-            const [datePart, timePart] = dataOriginal.hora.split(' ');
-            const [year, month, day] = datePart.split('-');
-            const [hours] = timePart.split(':');
-            
-            const dataLocal = new Date(year, month - 1, day, hours);
-            return dataLocal.toLocaleString('pt-BR', {
+            // Mostra o horário exato do banco
+            return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
               day: '2-digit',
               month: '2-digit',
               year: 'numeric',
@@ -702,8 +673,8 @@ export default function App() {
             }}>
               {agrupados.length > 0 && (
                 <>
-                  <div><strong>Data inicial:</strong> {agrupados[0].hora.replace(' ', ' às ')}</div>
-                  <div><strong>Data final:</strong> {agrupados[agrupados.length - 1].hora.replace(' ', ' às ')}</div>
+                  <div><strong>Data inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>Data final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
                 </>
               )}
               <div style={{ marginTop: "8px", fontStyle: "italic" }}>
