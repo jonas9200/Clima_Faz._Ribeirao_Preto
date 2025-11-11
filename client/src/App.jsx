@@ -222,18 +222,23 @@ export default function App() {
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Configurações dos gráficos
+  // Configurações dos gráficos para dark mode
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false
+        display: false,
+        labels: {
+          color: '#e2e8f0'
+        }
       },
       tooltip: {
         mode: 'index',
         intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#e2e8f0',
+        bodyColor: '#e2e8f0',
         titleFont: {
           size: isMobile ? 12 : 14
         },
@@ -268,9 +273,10 @@ export default function App() {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0,0,0,0.1)'
+          color: 'rgba(148, 163, 184, 0.2)'
         },
         ticks: {
+          color: '#94a3b8',
           font: {
             size: isMobile ? 10 : 12
           },
@@ -294,9 +300,10 @@ export default function App() {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0,0,0,0.1)'
+          color: 'rgba(148, 163, 184, 0.2)'
         },
         ticks: {
+          color: '#94a3b8',
           font: {
             size: isMobile ? 10 : 12
           },
@@ -308,21 +315,23 @@ export default function App() {
     }
   };
 
-  // Estilos atualizados para melhor visibilidade
+  // Estilos DARK MODE com tema azul
   const styles = {
     container: {
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
       padding: isMobile ? "10px" : "20px",
       fontFamily: "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      color: "#e2e8f0"
     },
     header: {
-      background: "rgba(255, 255, 255, 0.95)",
+      background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "20px",
       padding: isMobile ? "20px" : "30px",
       marginBottom: isMobile ? "20px" : "30px",
-      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.15)",
+      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
       backdropFilter: "blur(10px)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
     },
     headerContent: {
       display: "flex",
@@ -338,7 +347,7 @@ export default function App() {
     },
     logo: {
       fontSize: isMobile ? "2rem" : "2.5rem",
-      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
       WebkitBackgroundClip: "text",
       WebkitTextFillColor: "transparent",
     },
@@ -346,13 +355,13 @@ export default function App() {
       margin: 0,
       fontSize: isMobile ? "1.5rem" : "2rem",
       fontWeight: "700",
-      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
       WebkitBackgroundClip: "text",
       WebkitTextFillColor: "transparent",
     },
     subtitle: {
       margin: "8px 0 0 0",
-      color: "#666",
+      color: "#94a3b8",
       fontSize: isMobile ? "0.9rem" : "1rem",
       fontWeight: "400",
     },
@@ -363,12 +372,12 @@ export default function App() {
       width: isMobile ? "100%" : "auto",
     },
     statCard: {
-      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
       padding: isMobile ? "15px" : "20px",
       borderRadius: "15px",
       color: "white",
       textAlign: "center",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
     statValue: {
       fontSize: isMobile ? "1.3rem" : "1.6rem",
@@ -380,18 +389,19 @@ export default function App() {
       opacity: 0.9,
     },
     card: {
-      background: "rgba(255, 255, 255, 0.95)",
+      background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
       padding: isMobile ? "20px" : "25px",
       marginBottom: isMobile ? "20px" : "25px",
-      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.1)",
+      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
       backdropFilter: "blur(10px)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
     },
     cardTitle: {
       margin: "0 0 20px 0",
       fontSize: isMobile ? "1.2rem" : "1.3rem",
       fontWeight: "600",
-      color: "#333",
+      color: "#e2e8f0",
       display: "flex",
       alignItems: "center",
       gap: "10px",
@@ -409,23 +419,25 @@ export default function App() {
     label: {
       marginBottom: "8px",
       fontWeight: "500",
-      color: "#555",
+      color: "#cbd5e1",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
     },
     input: {
       padding: "12px",
-      border: "1px solid #e0e0e0",
+      border: "1px solid #475569",
       borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
-      backgroundColor: "white",
+      backgroundColor: "#1e293b",
+      color: "#e2e8f0",
       transition: "all 0.3s ease",
     },
     select: {
       padding: "12px",
-      border: "1px solid #e0e0e0",
+      border: "1px solid #475569",
       borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
-      backgroundColor: "white",
+      backgroundColor: "#1e293b",
+      color: "#e2e8f0",
       cursor: "pointer",
       transition: "all 0.3s ease",
     },
@@ -436,7 +448,7 @@ export default function App() {
     },
     primaryButton: {
       padding: "12px 24px",
-      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
       color: "white",
       border: "none",
       borderRadius: "8px",
@@ -445,13 +457,13 @@ export default function App() {
       cursor: "pointer",
       flex: isMobile ? "1" : "none",
       transition: "all 0.3s ease",
-      boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
     secondaryButton: {
       padding: "12px 24px",
       background: "transparent",
-      color: "#666",
-      border: "1px solid #e0e0e0",
+      color: "#94a3b8",
+      border: "1px solid #475569",
       borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       fontWeight: "600",
@@ -468,7 +480,7 @@ export default function App() {
     quickFilterButton: {
       padding: "12px 18px",
       background: "transparent",
-      border: "1px solid #e0e0e0",
+      border: "1px solid #475569",
       borderRadius: "8px",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
       cursor: "pointer",
@@ -476,58 +488,62 @@ export default function App() {
       flex: isMobile ? "1" : "none",
       transition: "all 0.3s ease",
       fontWeight: "500",
+      color: "#94a3b8",
     },
     quickFilterActive: {
-      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
       color: "white",
       borderColor: "transparent",
-      boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
     loading: {
       display: "flex",
       alignItems: "center",
       gap: "12px",
       padding: "20px",
-      background: "rgba(255, 255, 255, 0.95)",
+      background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "10px",
-      color: "#666",
+      color: "#94a3b8",
       justifyContent: "center",
       fontSize: isMobile ? "0.9rem" : "1rem",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
     },
     spinner: {
       width: "20px",
       height: "20px",
-      border: "2px solid #e0e0e0",
-      borderTop: "2px solid #667eea",
+      border: "2px solid #475569",
+      borderTop: "2px solid #3b82f6",
       borderRadius: "50%",
       animation: "spin 1s linear infinite",
     },
     error: {
       padding: "16px",
-      background: "rgba(255, 107, 107, 0.1)",
-      border: "1px solid #ff6b6b",
+      background: "rgba(239, 68, 68, 0.1)",
+      border: "1px solid #dc2626",
       borderRadius: "10px",
-      color: "#d63031",
+      color: "#fca5a5",
       textAlign: "center",
       fontSize: isMobile ? "0.9rem" : "1rem",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
     },
     emptyState: {
       textAlign: "center",
       padding: "50px 20px",
-      background: "rgba(255, 255, 255, 0.95)",
+      background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
-      color: "#666",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+      color: "#94a3b8",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
     },
     tabsContainer: {
       display: "flex",
-      background: "rgba(255, 255, 255, 0.9)",
+      background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "12px",
       padding: "5px",
       marginBottom: "20px",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
     },
     tab: {
       flex: 1,
@@ -538,21 +554,22 @@ export default function App() {
       transition: "all 0.3s ease",
       fontWeight: "500",
       fontSize: isMobile ? "0.85rem" : "0.9rem",
+      color: "#94a3b8",
     },
     activeTab: {
-      background: "linear-gradient(135deg, #667eea, #764ba2)",
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
       color: "white",
-      boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
-    // ALTURA AUMENTADA para o card do gráfico
     chartCard: {
-      background: "rgba(255, 255, 255, 0.95)",
+      background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
       padding: isMobile ? "20px" : "25px",
-      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.1)",
-      height: isMobile ? "400px" : "450px", // Aumentei a altura
+      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
+      height: isMobile ? "400px" : "450px",
       marginBottom: isMobile ? "20px" : "25px",
-      minHeight: "400px", // Altura mínima garantida
+      minHeight: "400px",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
     },
     chartHeader: {
       marginBottom: "20px",
@@ -562,24 +579,23 @@ export default function App() {
       margin: 0,
       fontSize: isMobile ? "1.1rem" : "1.2rem",
       fontWeight: "600",
-      color: "#333",
+      color: "#e2e8f0",
     },
-    // NOVO: Container principal dos gráficos com mais espaço
     chartsSection: {
       marginBottom: isMobile ? "20px" : "30px",
     },
-    // NOVO: Container do resumo com menos destaque
     summaryCard: {
-      background: "rgba(255, 255, 255, 0.95)",
+      background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
       padding: isMobile ? "20px" : "25px",
       marginBottom: isMobile ? "20px" : "25px",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)", // Sombra mais suave
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
       backdropFilter: "blur(10px)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
     }
   };
 
-  // Função para renderizar o gráfico ativo
+  // Função para renderizar o gráfico ativo com cores azuis
   const renderActiveChart = () => {
     switch (activeTab) {
       case "chuva":
@@ -591,8 +607,8 @@ export default function App() {
                 {
                   label: "Chuva por hora (mm)",
                   data: chuva,
-                  backgroundColor: "rgba(81, 207, 102, 0.8)",
-                  borderColor: "#51cf66",
+                  backgroundColor: "rgba(96, 165, 250, 0.8)",
+                  borderColor: "#60a5fa",
                   borderWidth: 2,
                   borderRadius: 6,
                 },
@@ -610,8 +626,8 @@ export default function App() {
                 {
                   label: "Temperatura (°C)",
                   data: temperatura,
-                  borderColor: "#ff6b6b",
-                  backgroundColor: "rgba(255, 107, 107, 0.1)",
+                  borderColor: "#f87171",
+                  backgroundColor: "rgba(248, 113, 113, 0.1)",
                   borderWidth: 3,
                   tension: 0.4,
                   fill: true,
@@ -630,8 +646,8 @@ export default function App() {
                 {
                   label: "Umidade (%)",
                   data: umidade,
-                  borderColor: "#4dabf7",
-                  backgroundColor: "rgba(77, 171, 247, 0.1)",
+                  borderColor: "#60a5fa",
+                  backgroundColor: "rgba(96, 165, 250, 0.1)",
                   borderWidth: 3,
                   tension: 0.4,
                   fill: true,
@@ -648,7 +664,7 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      {/* 🎯 HEADER ELEGANTE */}
+      {/* 🎯 HEADER ELEGANTE - DARK MODE */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div>
@@ -682,7 +698,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🎛️ PAINEL DE CONTROLE MODERNO */}
+      {/* 🎛️ PAINEL DE CONTROLE - DARK MODE */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>⚙️ Configurações</h3>
         
@@ -699,8 +715,8 @@ export default function App() {
                 style={styles.select}
                 value={equipamento}
                 onChange={(e) => setEquipamento(e.target.value)}
-                onFocus={(e) => e.target.style.borderColor = "#667eea"}
-                onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
+                onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+                onBlur={(e) => e.target.style.borderColor = "#475569"}
               >
                 <option value="">Selecione um equipamento</option>
                 {equipamentos.map((eqp) => (
@@ -719,8 +735,8 @@ export default function App() {
               style={styles.input}
               value={dataInicial}
               onChange={(e) => setDataInicial(e.target.value)}
-              onFocus={(e) => e.target.style.borderColor = "#667eea"}
-              onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
             />
           </div>
 
@@ -731,8 +747,8 @@ export default function App() {
               style={styles.input}
               value={dataFinal}
               onChange={(e) => setDataFinal(e.target.value)}
-              onFocus={(e) => e.target.style.borderColor = "#667eea"}
-              onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
             />
           </div>
         </div>
@@ -750,7 +766,7 @@ export default function App() {
           <button 
             style={styles.secondaryButton} 
             onClick={limparFiltro}
-            onMouseOver={(e) => e.target.style.backgroundColor = "#f8f9fa"}
+            onMouseOver={(e) => e.target.style.backgroundColor = "#374151"}
             onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
           >
             🗑️ Limpar Filtros
@@ -758,7 +774,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ⏱️ FILTROS RÁPIDOS ESTILIZADOS */}
+      {/* ⏱️ FILTROS RÁPIDOS - DARK MODE */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>⏱️ Período Rápido</h3>
         <div style={styles.quickFilters}>
@@ -770,7 +786,7 @@ export default function App() {
                 ...(periodo === p ? styles.quickFilterActive : {})
               }}
               onClick={() => calcularPeriodoRapido(p)}
-              onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#f8f9fa")}
+              onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#374151")}
               onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
               disabled={!equipamento}
             >
@@ -782,7 +798,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 📊 STATUS E ERROS */}
+      {/* 📊 STATUS E ERROS - DARK MODE */}
       <div>
         {loading && (
           <div style={styles.loading}>
@@ -800,7 +816,7 @@ export default function App() {
         {!loading && !erro && agrupados.length === 0 && equipamento && (
           <div style={styles.emptyState}>
             <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📈</div>
-            <h3 style={{ marginBottom: "10px", color: "#333" }}>Nenhum dado encontrado</h3>
+            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Nenhum dado encontrado</h3>
             <p style={{ margin: 0 }}>Não há dados disponíveis para os filtros selecionados.</p>
           </div>
         )}
@@ -808,13 +824,13 @@ export default function App() {
         {!equipamento && (
           <div style={styles.emptyState}>
             <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📡</div>
-            <h3 style={{ marginBottom: "10px", color: "#333" }}>Selecione um equipamento</h3>
+            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Selecione um equipamento</h3>
             <p style={{ margin: 0 }}>Escolha um equipamento da lista para visualizar os dados.</p>
           </div>
         )}
       </div>
 
-      {/* 📈 GRÁFICOS COM ABAS - SEÇÃO PRINCIPAL */}
+      {/* 📈 GRÁFICOS COM ABAS - DARK MODE */}
       {agrupados.length > 0 && (
         <div style={styles.chartsSection}>
           {/* ABAS DE NAVEGAÇÃO */}
@@ -831,7 +847,7 @@ export default function App() {
                   ...(activeTab === tab.id ? styles.activeTab : {})
                 }}
                 onClick={() => setActiveTab(tab.id)}
-                onMouseOver={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "#f8f9fa")}
+                onMouseOver={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "#374151")}
                 onMouseOut={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "transparent")}
               >
                 {isMobile ? tab.emoji : tab.label}
@@ -839,7 +855,7 @@ export default function App() {
             ))}
           </div>
 
-          {/* GRÁFICO ATIVO - CARD COM MAIOR DESTAQUE */}
+          {/* GRÁFICO ATIVO */}
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>
@@ -851,15 +867,16 @@ export default function App() {
             {renderActiveChart()}
           </div>
 
-          {/* 🗓️ INFORMAÇÕES DO PERÍODO - CARD SECUNDÁRIO */}
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO */}
           <div style={styles.summaryCard}>
             <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
             <div style={{ 
-              background: "linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05))", 
+              background: "linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1))", 
               padding: "20px", 
               borderRadius: "12px",
               fontSize: isMobile ? "0.85rem" : "0.95rem",
-              border: "1px solid rgba(102, 126, 234, 0.1)"
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+              color: "#cbd5e1"
             }}>
               {agrupados.length > 0 && (
                 <div style={{ 
@@ -902,6 +919,12 @@ export default function App() {
 
         button:hover {
           transform: translateY(-1px);
+        }
+
+        body {
+          background: #0f172a;
+          margin: 0;
+          padding: 0;
         }
       `}</style>
     </div>
