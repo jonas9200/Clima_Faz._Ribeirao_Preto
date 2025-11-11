@@ -363,7 +363,7 @@ export default function App() {
       margin: "8px 0 0 0",
       color: "#94a3b8",
       fontSize: isMobile ? "0.9rem" : "1rem",
-      fontWeight: "400",
+      fontWeight: "420",
     },
     statsGrid: {
       display: "grid",
@@ -566,9 +566,9 @@ export default function App() {
       borderRadius: "15px",
       padding: isMobile ? "20px" : "25px",
       boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
-      height: isMobile ? "400px" : "450px",
+      height: isMobile ? "420px" : "450px",
       marginBottom: isMobile ? "20px" : "25px",
-      minHeight: "400px",
+      minHeight: "420px",
       border: "1px solid rgba(100, 116, 139, 0.2)"
     },
     chartHeader: {
