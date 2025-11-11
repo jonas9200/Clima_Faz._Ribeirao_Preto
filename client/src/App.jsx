@@ -108,22 +108,22 @@ export default function App() {
     const horas = Object.keys(mapa).sort();
     return horas.map((h) => ({
       hora: h,
-      temperatura: mapa[h].somaTemp / mapa[h].count,
-      umidade: mapa[h].somaUmid / mapa[h].count,
-      chuva: mapa[h].somaChuva,
+      temperatura: Number((mapa[h].somaTemp / mapa[h].count).toFixed(2)),
+      umidade: Number((mapa[h].somaUmid / mapa[h].count).toFixed(2)),
+      chuva: Number(mapa[h].somaChuva.toFixed(2)),
     }));
   }
 
   const agrupados = agruparPorHora(dados);
 
-  // Labels simplificados - apenas números sequenciais
-  const labels = agrupados.map((_, index) => `Ponto ${index + 1}`);
+  // Labels vazios para remover textos abaixo dos gráficos
+  const labels = agrupados.map(() => "");
 
   const temperatura = agrupados.map((d) => d.temperatura);
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
-  // Configurações simplificadas dos gráficos
+  // Configurações dos gráficos sem labels
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -147,21 +147,14 @@ export default function App() {
             });
           },
           label: (context) => {
-            return `${context.dataset.label}: ${context.parsed.y}`;
+            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
           }
         }
       }
     },
     scales: {
       x: {
-        ticks: {
-          maxRotation: 0,
-          autoSkip: true,
-          maxTicksLimit: isMobile ? 8 : 12,
-          font: {
-            size: isMobile ? 10 : 12
-          }
-        },
+        display: false, // Remove completamente o eixo X
         grid: {
           display: false
         }
@@ -174,6 +167,9 @@ export default function App() {
         ticks: {
           font: {
             size: isMobile ? 10 : 12
+          },
+          callback: function(value) {
+            return value.toFixed(2); // Duas casas decimais no eixo Y
           }
         }
       }
@@ -197,6 +193,9 @@ export default function App() {
         ticks: {
           font: {
             size: isMobile ? 10 : 12
+          },
+          callback: function(value) {
+            return value.toFixed(2); // Duas casas decimais no eixo Y
           }
         }
       }
@@ -381,13 +380,13 @@ export default function App() {
     },
     chartHeader: {
       marginBottom: "16px",
+      textAlign: "center",
     },
     chartTitle: {
       margin: 0,
       fontSize: isMobile ? "1rem" : "1.1rem",
       fontWeight: "600",
       color: "#333",
-      textAlign: "center",
     },
   };
 
@@ -572,7 +571,7 @@ export default function App() {
 
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
-              <h3 style={styles.chartTitle}>🌧️ Precipitação Acumulada</h3>
+              <h3 style={styles.chartTitle}>🌧️ Precipitação Acumulada (mm)</h3>
             </div>
             <Bar
               data={{
@@ -602,7 +601,7 @@ export default function App() {
               <div><strong>Data inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
               <div><strong>Data final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
               <div style={{ marginTop: "8px", fontStyle: "italic" }}>
-                Passe o mouse sobre os pontos dos gráficos para ver as datas e horas específicas
+                Passe o mouse sobre os gráficos para ver os valores e datas específicas
               </div>
             </div>
           </div>
@@ -618,7 +617,7 @@ export default function App() {
         /* Melhora a experiência em mobile */
         @media (max-width: 768px) {
           input[type="datetime-local"] {
-            font-size: 16px; /* Previne zoom no iOS */
+            font-size: 16px;
           }
         }
       `}</style>
