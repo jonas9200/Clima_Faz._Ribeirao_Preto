@@ -315,7 +315,7 @@ export default function App() {
     }
   };
 
-  // Estilos DARK MODE com tema azul
+  // Estilos DARK MODE com tema azul - OTIMIZADO
   const styles = {
     container: {
       minHeight: "100vh",
@@ -363,7 +363,7 @@ export default function App() {
       margin: "8px 0 0 0",
       color: "#94a3b8",
       fontSize: isMobile ? "0.9rem" : "1rem",
-      fontWeight: "420",
+      fontWeight: "400",
     },
     statsGrid: {
       display: "grid",
@@ -561,25 +561,34 @@ export default function App() {
       color: "white",
       boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
+    // ESTILOS OTIMIZADOS PARA OS GRÁFICOS
     chartCard: {
       background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
-      padding: isMobile ? "20px" : "25px",
+      padding: isMobile ? "15px 20px" : "20px 25px",
       boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
-      height: isMobile ? "420px" : "450px",
+      height: isMobile ? "380px" : "420px",
       marginBottom: isMobile ? "20px" : "25px",
-      minHeight: "420px",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
+      minHeight: "380px",
+      border: "1px solid rgba(100, 116, 139, 0.2)",
+      display: "flex",
+      flexDirection: "column",
     },
     chartHeader: {
-      marginBottom: "20px",
+      marginBottom: "12px",
       textAlign: "center",
+      flexShrink: 0,
     },
     chartTitle: {
       margin: 0,
       fontSize: isMobile ? "1.1rem" : "1.2rem",
       fontWeight: "600",
       color: "#e2e8f0",
+    },
+    chartContainer: {
+      flex: 1,
+      minHeight: 0,
+      position: "relative",
     },
     chartsSection: {
       marginBottom: isMobile ? "20px" : "30px",
@@ -830,7 +839,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 📈 GRÁFICOS COM ABAS - DARK MODE */}
+      {/* 📈 GRÁFICOS COM ABAS - DARK MODE OTIMIZADO */}
       {agrupados.length > 0 && (
         <div style={styles.chartsSection}>
           {/* ABAS DE NAVEGAÇÃO */}
@@ -855,7 +864,7 @@ export default function App() {
             ))}
           </div>
 
-          {/* GRÁFICO ATIVO */}
+          {/* GRÁFICO ATIVO - LAYOUT OTIMIZADO */}
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>
@@ -864,7 +873,9 @@ export default function App() {
                 {activeTab === "umidade" && "💧 Umidade Relativa (%)"}
               </h3>
             </div>
-            {renderActiveChart()}
+            <div style={styles.chartContainer}>
+              {renderActiveChart()}
+            </div>
           </div>
 
           {/* 🗓️ INFORMAÇÕES DO PERÍODO */}
