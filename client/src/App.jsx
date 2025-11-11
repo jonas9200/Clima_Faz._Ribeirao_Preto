@@ -25,23 +25,43 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Função para converter data local para formato ISO sem timezone
+  function toLocalISOString(date) {
+    const offset = date.getTimezoneOffset();
+    const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return adjustedDate.toISOString().slice(0, 16);
+  }
+
+  // Função para converter de input datetime-local para ISO
+  function fromLocalInputToISO(datetimeString) {
+    if (!datetimeString) return '';
+    const date = new Date(datetimeString);
+    return date.toISOString().slice(0, 19);
+  }
+
   // 📆 Filtros rápidos
   function calcularPeriodoRapido(p) {
     const agora = new Date();
-    const final = agora.toISOString().slice(0, 19);
+    
+    // Converte para o formato do input datetime-local (local time)
+    const final = toLocalISOString(agora);
     const inicio = new Date(agora);
 
     if (p === "24h") inicio.setHours(inicio.getHours() - 24);
     if (p === "7d") inicio.setDate(inicio.getDate() - 7);
     if (p === "30d") inicio.setDate(inicio.getDate() - 30);
 
-    const inicioISO = inicio.toISOString().slice(0, 19);
+    const inicioLocal = toLocalISOString(inicio);
 
-    setDataInicial(inicioISO);
+    setDataInicial(inicioLocal);
     setDataFinal(final);
     setPeriodo(p);
 
-    carregar(inicioISO, final);
+    // Converte para ISO antes de enviar para a API
+    const inicioISO = fromLocalInputToISO(inicioLocal);
+    const finalISO = fromLocalInputToISO(final);
+    
+    carregar(inicioISO, finalISO);
   }
 
   // 🔄 Carregar da API
@@ -50,8 +70,13 @@ export default function App() {
     setErro("");
     try {
       const params = new URLSearchParams({ equipamento });
-      if (inicial) params.append("data_inicial", inicial);
-      if (final) params.append("data_final", final);
+      
+      // Converte as datas do formato local para ISO se necessário
+      const dataInicialISO = inicial.includes('T') ? fromLocalInputToISO(inicial) : inicial;
+      const dataFinalISO = final.includes('T') ? fromLocalInputToISO(final) : final;
+      
+      if (dataInicialISO) params.append("data_inicial", dataInicialISO);
+      if (dataFinalISO) params.append("data_final", dataFinalISO);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
       console.log("📡 Buscando dados:", url);
@@ -154,7 +179,7 @@ export default function App() {
     },
     scales: {
       x: {
-        display: false, // Remove completamente o eixo X
+        display: false,
         grid: {
           display: false
         }
@@ -169,7 +194,7 @@ export default function App() {
             size: isMobile ? 10 : 12
           },
           callback: function(value) {
-            return value.toFixed(2); // Duas casas decimais no eixo Y
+            return value.toFixed(2);
           }
         }
       }
@@ -195,7 +220,7 @@ export default function App() {
             size: isMobile ? 10 : 12
           },
           callback: function(value) {
-            return value.toFixed(2); // Duas casas decimais no eixo Y
+            return value.toFixed(2);
           }
         }
       }
@@ -614,7 +639,6 @@ export default function App() {
           100% { transform: rotate(360deg); }
         }
         
-        /* Melhora a experiência em mobile */
         @media (max-width: 768px) {
           input[type="datetime-local"] {
             font-size: 16px;
