@@ -561,6 +561,7 @@ export default function App() {
       color: "white",
       boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
+    // ESTILOS OTIMIZADOS PARA OS GRÁFICOS
     chartCard: {
       background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
@@ -877,7 +878,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 🗓️ INFORMAÇÕES DO PERÍODO - ATUALIZADO */}
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO */}
           <div style={styles.summaryCard}>
             <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
             <div style={{ 
@@ -895,9 +896,11 @@ export default function App() {
                   gap: "15px" 
                 }}>
                   <div><strong>📡 Equipamento:</strong> {equipamento}</div>
+                  <div><strong>📈 Total de Horas:</strong> {agrupados.length} horas</div>
                   <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
+                  <div><strong>📊 Média Temperatura:</strong> {(temperatura.reduce((a, b) => a + b, 0) / temperatura.length).toFixed(2)} °C</div>
                 </div>
               )}
             </div>
@@ -937,4 +940,4 @@ export default function App() {
       `}</style>
     </div>
   );
-}
+} 
