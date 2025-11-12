@@ -680,8 +680,8 @@ export default function App() {
             <div style={styles.titleSection}>
               <div style={styles.logo}>🌦️</div>
               <div>
-                <h1 style={styles.title}>Fazenda Ribeirão Preto</h1>
-                <p style={styles.subtitle}>Monitoramento Meteorológico em Tempo Real</p>
+                <h1 style={styles.title}>AGS Clima</h1>
+                <p style={styles.subtitle}>Monitoramento Meteorológico</p>
               </div>
             </div>
           </div>
