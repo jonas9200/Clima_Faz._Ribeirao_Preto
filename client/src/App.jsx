@@ -11,7 +11,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadingEquipamentos, setLoadingEquipamentos] = useState(false);
   const [erro, setErro] = useState("");
-  const [periodo, setPeriodo] = useState("");
+  const [periodo, setPeriodo] = useState("24h");
   const [totalChuva, setTotalChuva] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeTab, setActiveTab] = useState("chuva");
@@ -44,16 +44,30 @@ export default function App() {
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
-      if (listaEquipamentos.length > 0 && !equipamento) {
+      // ✅ SEMPRE define o primeiro equipamento quando a lista estiver pronta
+      if (listaEquipamentos.length > 0) {
         setEquipamento(listaEquipamentos[0]);
       }
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
-      setEquipamentos(["Pluviometro_01"]);
+      const listaPadrao = ["Pluviometro_01"];
+      setEquipamentos(listaPadrao);
+      setEquipamento(listaPadrao[0]);
     } finally {
       setLoadingEquipamentos(false);
     }
   }
+
+  // 🔄 NOVO: Aplicar filtro das 24h automaticamente quando equipamento estiver disponível
+  useEffect(() => {
+    if (equipamento && equipamento !== "") {
+      console.log("🎯 Aplicando filtro automático das 24h para:", equipamento);
+      // Pequeno delay para garantir que tudo está carregado
+      setTimeout(() => {
+        calcularPeriodoRapido("24h");
+      }, 100);
+    }
+  }, [equipamento]);
 
   // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
@@ -100,6 +114,7 @@ export default function App() {
     const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
     const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
 
+    console.log(`📊 Aplicando filtro ${p}:`, { inicioBanco, finalBanco });
     carregarComDatas(inicioBanco, finalBanco);
   }
 
@@ -164,14 +179,11 @@ export default function App() {
     setDataInicial("");
     setDataFinal("");
     setPeriodo("");
-    carregar();
+    // Ao limpar, volta para as 24h
+    setTimeout(() => {
+      calcularPeriodoRapido("24h");
+    }, 100);
   }
-
-  useEffect(() => {
-    if (equipamento) {
-      carregar();
-    }
-  }, [equipamento]);
 
   // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
   function agruparPorHora(lista) {
@@ -561,7 +573,6 @@ export default function App() {
       color: "white",
       boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
-    // ESTILOS OTIMIZADOS PARA OS GRÁFICOS
     chartCard: {
       background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
@@ -809,7 +820,14 @@ export default function App() {
 
       {/* 📊 STATUS E ERROS - DARK MODE */}
       <div>
-        {loading && (
+        {loading && periodo === "24h" && (
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <span>Carregando dados das últimas 24h...</span>
+          </div>
+        )}
+        
+        {loading && periodo !== "24h" && (
           <div style={styles.loading}>
             <div style={styles.spinner}></div>
             <span>Carregando dados meteorológicos...</span>
@@ -830,7 +848,7 @@ export default function App() {
           </div>
         )}
 
-        {!equipamento && (
+        {!equipamento && !loadingEquipamentos && (
           <div style={styles.emptyState}>
             <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📡</div>
             <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Selecione um equipamento</h3>
@@ -940,4 +958,4 @@ export default function App() {
       `}</style>
     </div>
   );
-} 
+}
