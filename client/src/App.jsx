@@ -561,7 +561,6 @@ export default function App() {
       color: "white",
       boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
     },
-    // ESTILOS OTIMIZADOS PARA OS GRÁFICOS
     chartCard: {
       background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
@@ -878,31 +877,32 @@ export default function App() {
             </div>
           </div>
 
-        {/* 🗓️ INFORMAÇÕES DO PERÍODO */}
-<div style={styles.summaryCard}>
-  <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
-  <div style={{ 
-    background: "linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1))", 
-    padding: "20px", 
-    borderRadius: "12px",
-    fontSize: isMobile ? "0.85rem" : "0.95rem",
-    border: "1px solid rgba(59, 130, 246, 0.2)",
-    color: "#cbd5e1"
-  }}>
-    {agrupados.length > 0 && (
-      <div style={{ 
-        display: "grid", 
-        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
-        gap: "15px" 
-      }}>
-        <div><strong>📡 Equipamento:</strong> {equipamento}</div>
-        <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
-        <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
-        <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
-      </div>
-    )}
-  </div>
-</div>
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO - ATUALIZADO */}
+          <div style={styles.summaryCard}>
+            <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
+            <div style={{ 
+              background: "linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1))", 
+              padding: "20px", 
+              borderRadius: "12px",
+              fontSize: isMobile ? "0.85rem" : "0.95rem",
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+              color: "#cbd5e1"
+            }}>
+              {agrupados.length > 0 && (
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                  gap: "15px" 
+                }}>
+                  <div><strong>📡 Equipamento:</strong> {equipamento}</div>
+                  <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       <style>{`
