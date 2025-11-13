@@ -379,7 +379,7 @@ export default function App() {
     },
     statsGrid: {
       display: "grid",
-      gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
       gap: "15px",
       width: isMobile ? "100%" : "auto",
     },
@@ -702,10 +702,6 @@ export default function App() {
               <div style={styles.statCard}>
                 <div style={styles.statValue}>{totalChuva.toFixed(2)} mm</div>
                 <div style={styles.statLabel}>Total de Chuva</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statValue}>{agrupados.length}</div>
-                <div style={styles.statLabel}>Horas Analisadas</div>
               </div>
               {!isMobile && (
                 <div style={styles.statCard}>
