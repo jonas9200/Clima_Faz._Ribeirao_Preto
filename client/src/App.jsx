@@ -2,18 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import "chart.js/auto";
 
-// Importações do Leaflet
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// Corrigir ícones padrão do Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
 export default function App() {
   const [dados, setDados] = useState([]);
   const [equipamentos, setEquipamentos] = useState([]);
@@ -28,20 +16,19 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeTab, setActiveTab] = useState("chuva");
   
-  // Estados para o mapa Leaflet
+  // Estados para o mapa
   const [showMap, setShowMap] = useState(false);
   const [coordenadasSelecionadas, setCoordenadasSelecionadas] = useState({
     latitude: "",
     longitude: ""
   });
   const [salvandoCoordenadas, setSalvandoCoordenadas] = useState(false);
-  
-  // Referências para o mapa Leaflet
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markerRef = useRef(null);
+  const [mapaCarregado, setMapaCarregado] = useState(false);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
+
+  // Referências
+  const mapContainerRef = useRef(null);
 
   // Detecta se é mobile
   useEffect(() => {
@@ -67,82 +54,83 @@ export default function App() {
     }
   }, [equipamento]);
 
-  // 🗺️ Inicializar mapa Leaflet
+  // 🗺️ Carregar Leaflet dinamicamente
   useEffect(() => {
-    if (showMap && mapRef.current && !mapInstanceRef.current) {
-      // Coordenadas iniciais da Fazenda Ribeirão Preto
-      const initialLat = -14.2350;
-      const initialLng = -51.9253;
-      
-      // Criar instância do mapa
-      mapInstanceRef.current = L.map(mapRef.current).setView([initialLat, initialLng], 13);
-      
-      // Adicionar camadas de tile
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(mapInstanceRef.current);
-      
-      // Adicionar camada de satélite
-      L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-        maxZoom: 20,
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '© Google Satellite'
-      }).addTo(mapInstanceRef.current);
-      
-      // Evento de clique no mapa
-      mapInstanceRef.current.on('click', function(e) {
-        const { lat, lng } = e.latlng;
-        
-        setCoordenadasSelecionadas({
-          latitude: lat.toFixed(6),
-          longitude: lng.toFixed(6)
-        });
-        
-        // Remover marcador anterior se existir
-        if (markerRef.current) {
-          mapInstanceRef.current.removeLayer(markerRef.current);
-        }
-        
-        // Adicionar novo marcador
-        markerRef.current = L.marker([lat, lng])
-          .addTo(mapInstanceRef.current)
-          .bindPopup(`📍 Localização Selecionada<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
-          .openPopup();
-      });
-    }
-    
-    // Cleanup do mapa
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        markerRef.current = null;
-      }
-    };
-  }, [showMap]);
+    if (showMap && !mapaCarregado) {
+      const carregarLeaflet = async () => {
+        try {
+          // Carrega o Leaflet dinamicamente
+          const L = await import('leaflet');
+          
+          // Corrigir ícones padrão do Leaflet
+          delete L.Icon.Default.prototype._getIconUrl;
+          L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          });
 
-  // 🗺️ Atualizar marcador quando coordenadas mudam
-  useEffect(() => {
-    if (mapInstanceRef.current && coordenadasSelecionadas.latitude && coordenadasSelecionadas.longitude) {
-      const lat = parseFloat(coordenadasSelecionadas.latitude);
-      const lng = parseFloat(coordenadasSelecionadas.longitude);
-      
-      // Remover marcador anterior se existir
-      if (markerRef.current) {
-        mapInstanceRef.current.removeLayer(markerRef.current);
-      }
-      
-      // Adicionar novo marcador
-      markerRef.current = L.marker([lat, lng])
-        .addTo(mapInstanceRef.current)
-        .bindPopup(`📍 Localização Selecionada<br>Lat: ${coordenadasSelecionadas.latitude}<br>Lng: ${coordenadasSelecionadas.longitude}`)
-        .openPopup();
-      
-      // Centralizar no marcador
-      mapInstanceRef.current.setView([lat, lng], 15);
+          // Inicializar mapa
+          const map = L.map(mapContainerRef.current).setView([-14.2350, -51.9253], 13);
+          
+          // Adicionar camadas
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19,
+          }).addTo(map);
+
+          // Evento de clique no mapa
+          map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            
+            setCoordenadasSelecionadas({
+              latitude: lat.toFixed(6),
+              longitude: lng.toFixed(6)
+            });
+
+            // Limpar marcadores anteriores
+            map.eachLayer((layer) => {
+              if (layer instanceof L.Marker) {
+                map.removeLayer(layer);
+              }
+            });
+
+            // Adicionar novo marcador
+            L.marker([lat, lng])
+              .addTo(map)
+              .bindPopup(`📍 Localização Selecionada<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
+              .openPopup();
+          });
+
+          // Adicionar marcadores dos equipamentos existentes
+          equipamentos.forEach(eqp => {
+            if (eqp.latitude && eqp.longitude) {
+              const lat = parseFloat(eqp.latitude);
+              const lng = parseFloat(eqp.longitude);
+              
+              L.marker([lat, lng])
+                .addTo(map)
+                .bindPopup(`📡 ${eqp.nome || eqp}<br>Lat: ${eqp.latitude}<br>Lng: ${eqp.longitude}`);
+            }
+          });
+
+          setMapaCarregado(true);
+
+          // Cleanup
+          return () => {
+            if (map) {
+              map.remove();
+            }
+          };
+        } catch (error) {
+          console.error('Erro ao carregar Leaflet:', error);
+          setErro('Erro ao carregar o mapa. Tente novamente.');
+        }
+      };
+
+      carregarLeaflet();
     }
-  }, [coordenadasSelecionadas]);
+  }, [showMap, mapaCarregado, equipamentos]);
 
   async function carregarEquipamentos() {
     setLoadingEquipamentos(true);
@@ -152,7 +140,6 @@ export default function App() {
       if (!resp.ok) throw new Error("Erro ao buscar equipamentos");
       const json = await resp.json();
       
-      // Agora os equipamentos podem ter coordenadas
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
@@ -161,7 +148,6 @@ export default function App() {
       }
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
-      // Equipamentos padrão com estrutura de objeto
       const listaPadrao = [
         { 
           nome: "Pluviometro_01", 
@@ -195,7 +181,7 @@ export default function App() {
 
     setSalvandoCoordenadas(true);
     try {
-      // Atualiza as coordenadas do equipamento
+      // Simulação de salvamento - substitua pela sua API real
       const response = await fetch(`${baseUrl}/api/equipamentos/coordenadas`, {
         method: "PUT",
         headers: {
@@ -218,6 +204,7 @@ export default function App() {
         
         setErro("");
         setShowMap(false);
+        setMapaCarregado(false);
         alert("Coordenadas salvas com sucesso!");
       } else {
         throw new Error("Erro ao salvar coordenadas");
@@ -234,38 +221,6 @@ export default function App() {
     return equipamentos.find(eqp => 
       (typeof eqp === 'object' ? eqp.nome : eqp) === equipamento
     );
-  };
-
-  // Função para visualizar equipamento no mapa
-  const visualizarNoMapa = (equip) => {
-    const nome = typeof equip === 'object' ? equip.nome : equip;
-    const latitude = typeof equip === 'object' ? equip.latitude : '';
-    const longitude = typeof equip === 'object' ? equip.longitude : '';
-    
-    if (latitude && longitude) {
-      setEquipamento(nome);
-      setCoordenadasSelecionadas({ latitude, longitude });
-      setShowMap(true);
-      
-      // Dar um tempo para o mapa inicializar e depois centralizar
-      setTimeout(() => {
-        if (mapInstanceRef.current) {
-          const lat = parseFloat(latitude);
-          const lng = parseFloat(longitude);
-          mapInstanceRef.current.setView([lat, lng], 15);
-          
-          // Adicionar marcador
-          if (markerRef.current) {
-            mapInstanceRef.current.removeLayer(markerRef.current);
-          }
-          
-          markerRef.current = L.marker([lat, lng])
-            .addTo(mapInstanceRef.current)
-            .bindPopup(`📡 ${nome}<br>Lat: ${latitude}<br>Lng: ${longitude}`)
-            .openPopup();
-        }
-      }, 500);
-    }
   };
 
   // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
@@ -808,7 +763,7 @@ export default function App() {
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(100, 116, 139, 0.2)"
     },
-    // 🗺️ Estilos para o mapa Leaflet
+    // 🗺️ Estilos para o mapa
     mapCard: {
       background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
@@ -989,10 +944,15 @@ export default function App() {
               ...styles.primaryButton,
               background: showMap ? "#ef4444" : "linear-gradient(135deg, #1e40af, #3b82f6)"
             }}
-            onClick={() => setShowMap(!showMap)}
+            onClick={() => {
+              setShowMap(!showMap);
+              if (showMap) {
+                setMapaCarregado(false);
+              }
+            }}
             disabled={!equipamento}
           >
-            {showMap ? "❌ Fechar Mapa" : "📍 Abrir Mapa"}
+            {showMap ? "❌ Fechar Mapa" : "🗺️ Abrir Mapa Interativo"}
           </button>
           
           {showMap && coordenadasSelecionadas.latitude && (
@@ -1023,18 +983,16 @@ export default function App() {
         )}
 
         {/* MAPA LEAFLET */}
-        {showMap ? (
-          <div 
-            ref={mapRef}
-            style={styles.mapContainer}
-          />
-        ) : (
-          <div style={styles.mapContainer}>
+        <div 
+          ref={mapContainerRef}
+          style={styles.mapContainer}
+        >
+          {!showMap && (
             <div style={styles.mapOverlay}>
               <div>
                 <div style={{fontSize: "3rem", marginBottom: "10px"}}>🗺️</div>
                 <div style={{fontSize: isMobile ? "1.1rem" : "1.3rem"}}>
-                  Mapa Interativo
+                  Mapa Interativo Leaflet
                 </div>
                 <div style={{fontSize: "0.9rem", opacity: 0.8, marginTop: "10px"}}>
                   {equipamento 
@@ -1044,8 +1002,8 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* INSTRUÇÕES DO MAPA */}
         {showMap && (
@@ -1091,30 +1049,16 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  <div style={{display: 'flex', gap: '8px'}}>
-                    {latitude && longitude && (
-                      <button 
-                        style={{
-                          ...styles.secondaryButton,
-                          padding: "6px 12px",
-                          fontSize: "0.8rem"
-                        }}
-                        onClick={() => visualizarNoMapa(eqp)}
-                      >
-                        🗺️ Ver
-                      </button>
-                    )}
-                    <button 
-                      style={{
-                        ...styles.secondaryButton,
-                        padding: "6px 12px",
-                        fontSize: "0.8rem"
-                      }}
-                      onClick={() => setEquipamento(nome)}
-                    >
-                      {nome === equipamento ? "Selecionado" : "Selecionar"}
-                    </button>
-                  </div>
+                  <button 
+                    style={{
+                      ...styles.secondaryButton,
+                      padding: "6px 12px",
+                      fontSize: "0.8rem"
+                    }}
+                    onClick={() => setEquipamento(nome)}
+                  >
+                    {nome === equipamento ? "Selecionado" : "Selecionar"}
+                  </button>
                 </div>
               );
             })
@@ -1345,33 +1289,6 @@ export default function App() {
           background: #0f172a;
           margin: 0;
           padding: 0;
-        }
-
-        /* Estilos do Leaflet */
-        .leaflet-container {
-          background: #1e293b;
-          font-family: 'Inter', sans-serif;
-        }
-
-        .leaflet-popup-content-wrapper {
-          background: rgba(30, 41, 59, 0.95);
-          color: #e2e8f0;
-          border-radius: 8px;
-          backdrop-filter: blur(10px);
-        }
-
-        .leaflet-popup-tip {
-          background: rgba(30, 41, 59, 0.95);
-        }
-
-        .leaflet-control-zoom a {
-          background: rgba(30, 41, 59, 0.9) !important;
-          color: #e2e8f0 !important;
-          border: 1px solid #475569 !important;
-        }
-
-        .leaflet-control-zoom a:hover {
-          background: rgba(59, 130, 246, 0.8) !important;
         }
       `}</style>
     </div>
