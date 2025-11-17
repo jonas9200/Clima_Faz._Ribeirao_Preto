@@ -15,44 +15,8 @@ export default function App() {
   const [totalChuva, setTotalChuva] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeTab, setActiveTab] = useState("chuva");
-  
-  // Estados para o mapa e cadastro
-  const [showMapModal, setShowMapModal] = useState(false);
-  const [equipamentosMap, setEquipamentosMap] = useState({});
-  const [novoEquipamento, setNovoEquipamento] = useState({
-    nome: "",
-    latitude: "",
-    longitude: "",
-    descricao: ""
-  });
-  const [editMode, setEditMode] = useState(false);
-  const [selectedMarker, setSelectedMarker] = useState(null);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
-
-  // Carregar equipamentos do storage ao iniciar
-  useEffect(() => {
-    carregarEquipamentosDoStorage();
-  }, []);
-
-  async function carregarEquipamentosDoStorage() {
-    try {
-      const result = await window.storage.get('equipamentos-coordenadas');
-      if (result && result.value) {
-        setEquipamentosMap(JSON.parse(result.value));
-      }
-    } catch (error) {
-      console.log('Nenhum dado de equipamentos salvo ainda');
-    }
-  }
-
-  async function salvarEquipamentosNoStorage(equipamentosData) {
-    try {
-      await window.storage.set('equipamentos-coordenadas', JSON.stringify(equipamentosData));
-    } catch (error) {
-      console.error('Erro ao salvar equipamentos:', error);
-    }
-  }
 
   // Detecta se é mobile
   useEffect(() => {
@@ -64,7 +28,7 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Carregar lista de equipamentos
+  // 🔄 Carregar lista de equipamentos
   useEffect(() => {
     carregarEquipamentos();
   }, []);
@@ -80,6 +44,7 @@ export default function App() {
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
+      // ✅ SEMPRE define o primeiro equipamento quando a lista estiver pronta
       if (listaEquipamentos.length > 0) {
         setEquipamento(listaEquipamentos[0]);
       }
@@ -93,14 +58,18 @@ export default function App() {
     }
   }
 
+  // 🔄 NOVO: Aplicar filtro das 24h automaticamente quando equipamento estiver disponível
   useEffect(() => {
     if (equipamento && equipamento !== "") {
+      console.log("🎯 Aplicando filtro automático das 24h para:", equipamento);
+      // Pequeno delay para garantir que tudo está carregado
       setTimeout(() => {
         calcularPeriodoRapido("24h");
       }, 100);
     }
   }, [equipamento]);
 
+  // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -111,6 +80,7 @@ export default function App() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
+  // Função para converter input para formato do banco (YYYY-MM-DD HH:MM:SS)
   function toDatabaseFormat(datetimeString) {
     if (!datetimeString) return '';
     const date = new Date(datetimeString);
@@ -124,6 +94,7 @@ export default function App() {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
 
+  // 📆 Filtros rápidos
   function calcularPeriodoRapido(p) {
     const agora = new Date();
     const inicio = new Date(agora);
@@ -143,9 +114,11 @@ export default function App() {
     const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
     const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
 
+    console.log(`📊 Aplicando filtro ${p}:`, { inicioBanco, finalBanco });
     carregarComDatas(inicioBanco, finalBanco);
   }
 
+  // 🔄 Carregar da API com datas específicas
   async function carregarComDatas(inicial, final) {
     setLoading(true);
     setErro("");
@@ -172,6 +145,7 @@ export default function App() {
     }
   }
 
+  // 🔄 Carregar da API usando os estados atuais
   async function carregar() {
     setLoading(true);
     setErro("");
@@ -205,11 +179,13 @@ export default function App() {
     setDataInicial("");
     setDataFinal("");
     setPeriodo("");
+    // Ao limpar, volta para as 24h
     setTimeout(() => {
       calcularPeriodoRapido("24h");
     }, 100);
   }
 
+  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
   function agruparPorHora(lista) {
     const mapa = {};
 
@@ -252,61 +228,13 @@ export default function App() {
     }));
   }
 
-  // Funções do mapa
-  function adicionarEquipamento() {
-    if (!novoEquipamento.nome || !novoEquipamento.latitude || !novoEquipamento.longitude) {
-      alert('Preencha todos os campos obrigatórios (nome, latitude e longitude)');
-      return;
-    }
-
-    const novosEquipamentos = {
-      ...equipamentosMap,
-      [novoEquipamento.nome]: {
-        lat: parseFloat(novoEquipamento.latitude),
-        lng: parseFloat(novoEquipamento.longitude),
-        descricao: novoEquipamento.descricao || ''
-      }
-    };
-
-    setEquipamentosMap(novosEquipamentos);
-    salvarEquipamentosNoStorage(novosEquipamentos);
-    
-    setNovoEquipamento({ nome: "", latitude: "", longitude: "", descricao: "" });
-    setEditMode(false);
-  }
-
-  function editarEquipamento(nome) {
-    const equip = equipamentosMap[nome];
-    setNovoEquipamento({
-      nome: nome,
-      latitude: equip.lat.toString(),
-      longitude: equip.lng.toString(),
-      descricao: equip.descricao || ''
-    });
-    setEditMode(true);
-  }
-
-  function removerEquipamento(nome) {
-    if (!confirm(`Deseja realmente remover o equipamento ${nome}?`)) return;
-    
-    const novosEquipamentos = { ...equipamentosMap };
-    delete novosEquipamentos[nome];
-    
-    setEquipamentosMap(novosEquipamentos);
-    salvarEquipamentosNoStorage(novosEquipamentos);
-  }
-
-  function cancelarEdicao() {
-    setNovoEquipamento({ nome: "", latitude: "", longitude: "", descricao: "" });
-    setEditMode(false);
-  }
-
   const agrupados = agruparPorHora(dados);
   const labels = agrupados.map(() => "");
   const temperatura = agrupados.map((d) => d.temperatura);
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
 
+  // Configurações dos gráficos para dark mode
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -399,6 +327,7 @@ export default function App() {
     }
   };
 
+  // Estilos DARK MODE com tema azul - OTIMIZADO
   const styles = {
     container: {
       minHeight: "100vh",
@@ -683,71 +612,10 @@ export default function App() {
       boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    mapContainer: {
-      background: "rgba(30, 41, 59, 0.6)",
-      borderRadius: "12px",
-      padding: "15px",
-      marginTop: "15px",
-      border: "1px solid rgba(100, 116, 139, 0.2)",
-      minHeight: "400px",
-      position: "relative",
-    },
-    marker: {
-      position: "absolute",
-      transform: "translate(-50%, -100%)",
-      cursor: "pointer",
-      fontSize: "2rem",
-      transition: "all 0.3s ease",
-      filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
-    },
-    markerLabel: {
-      position: "absolute",
-      bottom: "-25px",
-      left: "50%",
-      transform: "translateX(-50%)",
-      background: "rgba(15, 23, 42, 0.9)",
-      color: "#e2e8f0",
-      padding: "4px 8px",
-      borderRadius: "4px",
-      fontSize: "0.75rem",
-      whiteSpace: "nowrap",
-      border: "1px solid rgba(100, 116, 139, 0.3)",
-    },
-    equipamentosList: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(250px, 1fr))",
-      gap: "12px",
-      marginTop: "15px",
-    },
-    equipamentoItem: {
-      background: "rgba(15, 23, 42, 0.8)",
-      padding: "12px",
-      borderRadius: "8px",
-      border: "1px solid rgba(100, 116, 139, 0.2)",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    equipamentoInfo: {
-      flex: 1,
-    },
-    equipamentoActions: {
-      display: "flex",
-      gap: "8px",
-    },
-    iconButton: {
-      background: "transparent",
-      border: "1px solid #475569",
-      color: "#94a3b8",
-      padding: "6px 10px",
-      borderRadius: "6px",
-      cursor: "pointer",
-      fontSize: "0.85rem",
-      transition: "all 0.3s ease",
-    },
+    }
   };
 
+  // Função para renderizar o gráfico ativo com cores azuis
   const renderActiveChart = () => {
     switch (activeTab) {
       case "chuva":
@@ -766,6 +634,46 @@ export default function App() {
                 },
               ],
             }}
+            options={barOptions}
+          />
+        );
+      case "temperatura":
+        return (
+          <Line
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Temperatura (°C)",
+                  data: temperatura,
+                  borderColor: "#f87171",
+                  backgroundColor: "rgba(248, 113, 113, 0.1)",
+                  borderWidth: 3,
+                  tension: 0.4,
+                  fill: true,
+                },
+              ],
+            }}
+            options={chartOptions}
+          />
+        );
+      case "umidade":
+        return (
+          <Line
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Umidade (%)",
+                  data: umidade,
+                  borderColor: "#60a5fa",
+                  backgroundColor: "rgba(96, 165, 250, 0.1)",
+                  borderWidth: 3,
+                  tension: 0.4,
+                  fill: true,
+                },
+              ],
+            }}
             options={chartOptions}
           />
         );
@@ -776,7 +684,7 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      {/* HEADER */}
+      {/* 🎯 HEADER ELEGANTE - DARK MODE */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div>
@@ -806,212 +714,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAPA DE EQUIPAMENTOS */}
-      <div style={styles.card}>
-        <h3 style={styles.cardTitle}>
-          📍 Localização dos Equipamentos
-        </h3>
-        
-        {/* Formulário de cadastro */}
-        <div style={styles.formGrid}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>📡 Nome do Equipamento</label>
-            <input
-              type="text"
-              style={styles.input}
-              value={novoEquipamento.nome}
-              onChange={(e) => setNovoEquipamento({...novoEquipamento, nome: e.target.value})}
-              placeholder="Ex: Pluviometro_01"
-              disabled={editMode}
-              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
-              onBlur={(e) => e.target.style.borderColor = "#475569"}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>🌐 Latitude</label>
-            <input
-              type="number"
-              step="0.000001"
-              style={styles.input}
-              value={novoEquipamento.latitude}
-              onChange={(e) => setNovoEquipamento({...novoEquipamento, latitude: e.target.value})}
-              placeholder="Ex: -21.1699"
-              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
-              onBlur={(e) => e.target.style.borderColor = "#475569"}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>🌐 Longitude</label>
-            <input
-              type="number"
-              step="0.000001"
-              style={styles.input}
-              value={novoEquipamento.longitude}
-              onChange={(e) => setNovoEquipamento({...novoEquipamento, longitude: e.target.value})}
-              placeholder="Ex: -47.8099"
-              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
-              onBlur={(e) => e.target.style.borderColor = "#475569"}
-            />
-          </div>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>📝 Descrição (opcional)</label>
-          <input
-            type="text"
-            style={styles.input}
-            value={novoEquipamento.descricao}
-            onChange={(e) => setNovoEquipamento({...novoEquipamento, descricao: e.target.value})}
-            placeholder="Ex: Localizado próximo ao reservatório"
-            onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
-            onBlur={(e) => e.target.style.borderColor = "#475569"}
-          />
-        </div>
-
-        <div style={styles.buttonGroup}>
-          <button 
-            style={styles.primaryButton}
-            onClick={adicionarEquipamento}
-            onMouseOver={(e) => e.target.style.transform = "translateY(-2px)"}
-            onMouseOut={(e) => e.target.style.transform = "translateY(0)"}
-          >
-            {editMode ? "💾 Atualizar Equipamento" : "➕ Adicionar Equipamento"}
-          </button>
-          {editMode && (
-            <button 
-              style={styles.secondaryButton}
-              onClick={cancelarEdicao}
-              onMouseOver={(e) => e.target.style.backgroundColor = "#374151"}
-              onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
-            >
-              ❌ Cancelar
-            </button>
-          )}
-        </div>
-
-        {/* Mapa visual simples */}
-        <div style={styles.mapContainer}>
-          <div style={{
-            position: "relative",
-            width: "100%",
-            height: "350px",
-            background: "linear-gradient(135deg, rgba(15, 23, 42, 0.5) 0%, rgba(30, 41, 59, 0.5) 100%)",
-            borderRadius: "8px",
-            border: "2px dashed rgba(100, 116, 139, 0.3)",
-            overflow: "hidden",
-          }}>
-            {Object.keys(equipamentosMap).length === 0 ? (
-              <div style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                textAlign: "center",
-                color: "#94a3b8",
-              }}>
-                <div style={{ fontSize: "3rem", marginBottom: "10px" }}>🗺️</div>
-                <p>Nenhum equipamento cadastrado</p>
-                <p style={{ fontSize: "0.85rem", opacity: 0.7 }}>Adicione coordenadas para visualizar no mapa</p>
-              </div>
-            ) : (
-              <>
-                {/* Renderizar marcadores */}
-                {Object.entries(equipamentosMap).map(([nome, coords]) => {
-                  // Converter coordenadas para posição no mapa (simulado)
-                  // Latitude: -90 a 90 -> 0% a 100%
-                  // Longitude: -180 a 180 -> 0% a 100%
-                  const top = ((90 - coords.lat) / 180) * 100;
-                  const left = ((coords.lng + 180) / 360) * 100;
-
-                  return (
-                    <div
-                      key={nome}
-                      style={{
-                        ...styles.marker,
-                        top: `${top}%`,
-                        left: `${left}%`,
-                      }}
-                      onClick={() => setSelectedMarker(selectedMarker === nome ? null : nome)}
-                      onMouseOver={(e) => e.currentTarget.style.transform = "translate(-50%, -100%) scale(1.2)"}
-                      onMouseOut={(e) => e.currentTarget.style.transform = "translate(-50%, -100%) scale(1)"}
-                      title={`${nome}\nLat: ${coords.lat}\nLng: ${coords.lng}\n${coords.descricao || ''}`}
-                    >
-                      📍
-                      {selectedMarker === nome && (
-                        <div style={styles.markerLabel}>
-                          {nome}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Lista de equipamentos cadastrados */}
-        {Object.keys(equipamentosMap).length > 0 && (
-          <div style={{ marginTop: "20px" }}>
-            <h4 style={{ color: "#cbd5e1", marginBottom: "12px" }}>📋 Equipamentos Cadastrados:</h4>
-            <div style={styles.equipamentosList}>
-              {Object.entries(equipamentosMap).map(([nome, coords]) => (
-                <div key={nome} style={styles.equipamentoItem}>
-                  <div style={styles.equipamentoInfo}>
-                    <div style={{ fontWeight: "600", marginBottom: "4px", color: "#e2e8f0" }}>
-                      📡 {nome}
-                    </div>
-                    <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-                      📍 {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
-                    </div>
-                    {coords.descricao && (
-                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
-                        {coords.descricao}
-                      </div>
-                    )}
-                  </div>
-                  <div style={styles.equipamentoActions}>
-                    <button
-                      style={styles.iconButton}
-                      onClick={() => editarEquipamento(nome)}
-                      onMouseOver={(e) => {
-                        e.target.style.backgroundColor = "#374151";
-                        e.target.style.color = "#60a5fa";
-                      }}
-                      onMouseOut={(e) => {
-                        e.target.style.backgroundColor = "transparent";
-                        e.target.style.color = "#94a3b8";
-                      }}
-                      title="Editar"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      style={styles.iconButton}
-                      onClick={() => removerEquipamento(nome)}
-                      onMouseOver={(e) => {
-                        e.target.style.backgroundColor = "#374151";
-                        e.target.style.color = "#f87171";
-                      }}
-                      onMouseOut={(e) => {
-                        e.target.style.backgroundColor = "transparent";
-                        e.target.style.color = "#94a3b8";
-                      }}
-                      title="Remover"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* PAINEL DE CONTROLE */}
+      {/* 🎛️ PAINEL DE CONTROLE - DARK MODE */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>⚙️ Configurações</h3>
         
@@ -1035,7 +738,6 @@ export default function App() {
                 {equipamentos.map((eqp) => (
                   <option key={eqp} value={eqp}>
                     {eqp}
-                    {equipamentosMap[eqp] ? " 📍" : ""}
                   </option>
                 ))}
               </select>
@@ -1088,7 +790,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* FILTROS RÁPIDOS */}
+      {/* ⏱️ FILTROS RÁPIDOS - DARK MODE */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>⏱️ Período Rápido</h3>
         <div style={styles.quickFilters}>
@@ -1112,7 +814,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* STATUS E ERROS */}
+      {/* 📊 STATUS E ERROS - DARK MODE */}
       <div>
         {loading && periodo === "24h" && (
           <div style={styles.loading}>
@@ -1151,9 +853,10 @@ export default function App() {
         )}
       </div>
 
-      {/* GRÁFICOS COM ABAS */}
+      {/* 📈 GRÁFICOS COM ABAS - DARK MODE OTIMIZADO */}
       {agrupados.length > 0 && (
         <div style={styles.chartsSection}>
+          {/* ABAS DE NAVEGAÇÃO */}
           <div style={styles.tabsContainer}>
             {[
               { id: "chuva", label: "🌧️ Chuva", emoji: "🌧️" },
@@ -1175,6 +878,7 @@ export default function App() {
             ))}
           </div>
 
+          {/* GRÁFICO ATIVO - LAYOUT OTIMIZADO */}
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>
@@ -1188,7 +892,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* RESUMO DO PERÍODO */}
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO - MODIFICADO */}
           <div style={styles.summaryCard}>
             <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
             <div style={{ 
@@ -1205,14 +909,7 @@ export default function App() {
                   gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
                   gap: "15px" 
                 }}>
-                  <div>
-                    <strong>📡 Equipamento:</strong> {equipamento}
-                    {equipamentosMap[equipamento] && (
-                      <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "4px" }}>
-                        📍 Lat: {equipamentosMap[equipamento].lat.toFixed(6)}, Lng: {equipamentosMap[equipamento].lng.toFixed(6)}
-                      </div>
-                    )}
-                  </div>
+                  <div><strong>📡 Equipamento:</strong> {equipamento}</div>
                   <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
@@ -1255,44 +952,4 @@ export default function App() {
       `}</style>
     </div>
   );
-}={barOptions}
-          />
-        );
-      case "temperatura":
-        return (
-          <Line
-            data={{
-              labels,
-              datasets: [
-                {
-                  label: "Temperatura (°C)",
-                  data: temperatura,
-                  borderColor: "#f87171",
-                  backgroundColor: "rgba(248, 113, 113, 0.1)",
-                  borderWidth: 3,
-                  tension: 0.4,
-                  fill: true,
-                },
-              ],
-            }}
-            options={chartOptions}
-          />
-        );
-      case "umidade":
-        return (
-          <Line
-            data={{
-              labels,
-              datasets: [
-                {
-                  label: "Umidade (%)",
-                  data: umidade,
-                  borderColor: "#60a5fa",
-                  backgroundColor: "rgba(96, 165, 250, 0.1)",
-                  borderWidth: 3,
-                  tension: 0.4,
-                  fill: true,
-                },
-              ],
-            }}
-            options
+}
