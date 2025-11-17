@@ -15,6 +15,16 @@ export default function App() {
   const [totalChuva, setTotalChuva] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeTab, setActiveTab] = useState("chuva");
+  
+  // Novos estados para o mapa e cadastro de equipamentos
+  const [showMap, setShowMap] = useState(false);
+  const [novoEquipamento, setNovoEquipamento] = useState({
+    nome: "",
+    latitude: "",
+    longitude: ""
+  });
+  const [cadastrando, setCadastrando] = useState(false);
+  const [mapaCarregado, setMapaCarregado] = useState(false);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
@@ -68,6 +78,58 @@ export default function App() {
       }, 100);
     }
   }, [equipamento]);
+
+  // 🗺️ Funções para o mapa e cadastro de equipamentos
+  const handleCadastrarEquipamento = async () => {
+    if (!novoEquipamento.nome || !novoEquipamento.latitude || !novoEquipamento.longitude) {
+      setErro("Preencha todos os campos para cadastrar o equipamento");
+      return;
+    }
+
+    setCadastrando(true);
+    try {
+      // Aqui você implementaria a chamada para sua API
+      const response = await fetch(`${baseUrl}/api/equipamentos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(novoEquipamento),
+      });
+
+      if (response.ok) {
+        // Limpar formulário e recarregar equipamentos
+        setNovoEquipamento({ nome: "", latitude: "", longitude: "" });
+        setErro("");
+        carregarEquipamentos();
+        alert("Equipamento cadastrado com sucesso!");
+      } else {
+        throw new Error("Erro ao cadastrar equipamento");
+      }
+    } catch (error) {
+      setErro("Erro ao cadastrar equipamento: " + error.message);
+    } finally {
+      setCadastrando(false);
+    }
+  };
+
+  const handleMapClick = (e) => {
+    if (!showMap) return;
+    
+    const rect = e.target.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Coordenadas fictícias para demonstração
+    const lat = (-14.2350 + (y / rect.height) * 10).toFixed(6);
+    const lng = (-51.9253 + (x / rect.width) * 10).toFixed(6);
+    
+    setNovoEquipamento(prev => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng
+    }));
+  };
 
   // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
@@ -612,6 +674,73 @@ export default function App() {
       boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    // 🗺️ Novos estilos para o mapa
+    mapCard: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "15px",
+      padding: isMobile ? "20px" : "25px",
+      marginBottom: isMobile ? "20px" : "25px",
+      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
+      backdropFilter: "blur(10px)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    mapContainer: {
+      position: "relative",
+      width: "100%",
+      height: isMobile ? "300px" : "400px",
+      background: "linear-gradient(135deg, #1e3a8a, #3b82f6)",
+      borderRadius: "12px",
+      overflow: "hidden",
+      border: "2px solid #475569",
+      cursor: showMap ? "crosshair" : "default",
+      marginBottom: "20px",
+    },
+    mapImage: {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      opacity: 0.7,
+    },
+    mapMarker: {
+      position: "absolute",
+      width: "20px",
+      height: "20px",
+      background: "#ef4444",
+      border: "3px solid white",
+      borderRadius: "50%",
+      transform: "translate(-50%, -50%)",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+      cursor: "pointer",
+    },
+    mapControls: {
+      display: "flex",
+      gap: "10px",
+      marginBottom: "15px",
+      flexWrap: "wrap",
+    },
+    mapForm: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+      gap: "15px",
+      marginBottom: "20px",
+    },
+    equipmentList: {
+      marginTop: "20px",
+      padding: "15px",
+      background: "rgba(30, 41, 59, 0.6)",
+      borderRadius: "10px",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    equipmentItem: {
+      padding: "10px 15px",
+      marginBottom: "8px",
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "8px",
+      border: "1px solid rgba(100, 116, 139, 0.3)",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
     }
   };
 
@@ -713,6 +842,149 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {/* 🗺️ CARD DO MAPA E CADASTRO DE EQUIPAMENTOS */}
+      <div style={styles.mapCard}>
+        <h3 style={styles.cardTitle}>🗺️ Mapa de Equipamentos</h3>
+        
+        <div style={styles.mapControls}>
+          <button 
+            style={{
+              ...styles.primaryButton,
+              background: showMap ? "#ef4444" : "linear-gradient(135deg, #1e40af, #3b82f6)"
+            }}
+            onClick={() => setShowMap(!showMap)}
+          >
+            {showMap ? "❌ Cancelar" : "📍 Adicionar Equipamento no Mapa"}
+          </button>
+          
+          {showMap && (
+            <button 
+              style={styles.secondaryButton}
+              onClick={() => {
+                setNovoEquipamento({ nome: "", latitude: "", longitude: "" });
+                setShowMap(false);
+              }}
+            >
+              🗑️ Limpar Seleção
+            </button>
+          )}
+        </div>
+
+        {/* MAPA INTERATIVO */}
+        <div 
+          style={styles.mapContainer}
+          onClick={handleMapClick}
+        >
+          {/* Mapa de fundo (imagem estática para demonstração) */}
+          <div style={{
+            width: "100%",
+            height: "100%",
+            background: "linear-gradient(135deg, #1e3a8a, #3b82f6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white",
+            fontSize: isMobile ? "1rem" : "1.2rem",
+            fontWeight: "500"
+          }}>
+            {showMap ? "Clique no mapa para selecionar a localização" : "Mapa da Fazenda"}
+          </div>
+
+          {/* Marcador no mapa */}
+          {novoEquipamento.latitude && novoEquipamento.longitude && (
+            <div 
+              style={{
+                ...styles.mapMarker,
+                left: "50%",
+                top: "50%"
+              }}
+              title={`Lat: ${novoEquipamento.latitude}, Lng: ${novoEquipamento.longitude}`}
+            />
+          )}
+        </div>
+
+        {/* FORMULÁRIO DE CADASTRO */}
+        {showMap && (
+          <div>
+            <div style={styles.mapForm}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>📝 Nome do Equipamento</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  value={novoEquipamento.nome}
+                  onChange={(e) => setNovoEquipamento(prev => ({...prev, nome: e.target.value}))}
+                  placeholder="Ex: Pluviometro_01"
+                />
+              </div>
+              
+              <div style={styles.formGroup}>
+                <label style={styles.label}>📍 Latitude</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  value={novoEquipamento.latitude}
+                  onChange={(e) => setNovoEquipamento(prev => ({...prev, latitude: e.target.value}))}
+                  placeholder="Ex: -14.235004"
+                  readOnly
+                />
+              </div>
+              
+              <div style={styles.formGroup}>
+                <label style={styles.label}>📍 Longitude</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  value={novoEquipamento.longitude}
+                  onChange={(e) => setNovoEquipamento(prev => ({...prev, longitude: e.target.value}))}
+                  placeholder="Ex: -51.925280"
+                  readOnly
+                />
+              </div>
+            </div>
+
+            <div style={styles.buttonGroup}>
+              <button 
+                style={styles.primaryButton}
+                onClick={handleCadastrarEquipamento}
+                disabled={cadastrando || !novoEquipamento.nome}
+              >
+                {cadastrando ? (
+                  <>
+                    <div style={{...styles.spinner, width: "16px", height: "16px", marginRight: "8px"}}></div>
+                    Cadastrando...
+                  </>
+                ) : (
+                  "💾 Cadastrar Equipamento"
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* LISTA DE EQUIPAMENTOS CADASTRADOS */}
+        <div style={styles.equipmentList}>
+          <h4 style={{...styles.cardTitle, marginBottom: "15px", fontSize: "1.1rem"}}>
+            📋 Equipamentos Cadastrados ({equipamentos.length})
+          </h4>
+          {equipamentos.map((eqp, index) => (
+            <div key={index} style={styles.equipmentItem}>
+              <span>📡 {eqp}</span>
+              <button 
+                style={{
+                  ...styles.secondaryButton,
+                  padding: "6px 12px",
+                  fontSize: "0.8rem"
+                }}
+                onClick={() => setEquipamento(eqp)}
+              >
+                Selecionar
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* 🎛️ PAINEL DE CONTROLE - DARK MODE */}
       <div style={styles.card}>
