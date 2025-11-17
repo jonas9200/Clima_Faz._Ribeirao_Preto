@@ -16,14 +16,14 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeTab, setActiveTab] = useState("chuva");
   
-  // Estados para o mapa e cadastro de equipamentos
+  // Estados para o mapa
   const [showMap, setShowMap] = useState(false);
-  const [novoEquipamento, setNovoEquipamento] = useState({
-    nome: "",
+  const [mapaSatelite, setMapaSatelite] = useState(false);
+  const [coordenadasSelecionadas, setCoordenadasSelecionadas] = useState({
     latitude: "",
     longitude: ""
   });
-  const [cadastrando, setCadastrando] = useState(false);
+  const [salvandoCoordenadas, setSalvandoCoordenadas] = useState(false);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
@@ -59,58 +59,31 @@ export default function App() {
       if (!resp.ok) throw new Error("Erro ao buscar equipamentos");
       const json = await resp.json();
       
+      // Agora os equipamentos podem ter coordenadas
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
       if (listaEquipamentos.length > 0) {
-        setEquipamento(listaEquipamentos[0]);
+        setEquipamento(listaEquipamentos[0].nome || listaEquipamentos[0]);
       }
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
-      const listaPadrao = ["Pluviometro_01", "Pluviometro_02", "Estacao_Central"];
+      // Equipamentos padrão com estrutura de objeto
+      const listaPadrao = [
+        { nome: "Pluviometro_01", latitude: "", longitude: "" },
+        { nome: "Pluviometro_02", latitude: "", longitude: "" },
+        { nome: "Estacao_Central", latitude: "", longitude: "" }
+      ];
       setEquipamentos(listaPadrao);
-      setEquipamento(listaPadrao[0]);
+      setEquipamento(listaPadrao[0].nome);
     } finally {
       setLoadingEquipamentos(false);
     }
   }
 
-  // 🗺️ Funções para o mapa e cadastro de equipamentos
-  const handleCadastrarEquipamento = async () => {
-    if (!novoEquipamento.nome || !novoEquipamento.latitude || !novoEquipamento.longitude) {
-      setErro("Preencha todos os campos para cadastrar o equipamento");
-      return;
-    }
-
-    setCadastrando(true);
-    try {
-      // Simulação de cadastro - substitua pela sua API real
-      const response = await fetch(`${baseUrl}/api/equipamentos`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(novoEquipamento),
-      });
-
-      if (response.ok) {
-        setNovoEquipamento({ nome: "", latitude: "", longitude: "" });
-        setErro("");
-        carregarEquipamentos();
-        setShowMap(false);
-        alert("Equipamento cadastrado com sucesso!");
-      } else {
-        throw new Error("Erro ao cadastrar equipamento");
-      }
-    } catch (error) {
-      setErro("Erro ao cadastrar equipamento: " + error.message);
-    } finally {
-      setCadastrando(false);
-    }
-  };
-
+  // 🗺️ Funções para o mapa
   const handleMapClick = (e) => {
-    if (!showMap) return;
+    if (!showMap || !equipamento) return;
     
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -120,11 +93,59 @@ export default function App() {
     const lat = (-14.2350 + ((y / rect.height) - 0.5) * 0.2).toFixed(6);
     const lng = (-51.9253 + ((x / rect.width) - 0.5) * 0.2).toFixed(6);
     
-    setNovoEquipamento(prev => ({
-      ...prev,
+    setCoordenadasSelecionadas({
       latitude: lat,
       longitude: lng
-    }));
+    });
+  };
+
+  const salvarCoordenadas = async () => {
+    if (!equipamento || !coordenadasSelecionadas.latitude) {
+      setErro("Selecione um equipamento e uma localização no mapa");
+      return;
+    }
+
+    setSalvandoCoordenadas(true);
+    try {
+      // Atualiza as coordenadas do equipamento
+      const response = await fetch(`${baseUrl}/api/equipamentos/coordenadas`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          equipamento: equipamento,
+          latitude: coordenadasSelecionadas.latitude,
+          longitude: coordenadasSelecionadas.longitude
+        }),
+      });
+
+      if (response.ok) {
+        // Atualiza a lista local de equipamentos
+        setEquipamentos(prev => prev.map(eqp => 
+          (eqp.nome === equipamento || eqp === equipamento) 
+            ? { ...eqp, latitude: coordenadasSelecionadas.latitude, longitude: coordenadasSelecionadas.longitude }
+            : eqp
+        ));
+        
+        setErro("");
+        setShowMap(false);
+        alert("Coordenadas salvas com sucesso!");
+      } else {
+        throw new Error("Erro ao salvar coordenadas");
+      }
+    } catch (error) {
+      setErro("Erro ao salvar coordenadas: " + error.message);
+    } finally {
+      setSalvandoCoordenadas(false);
+    }
+  };
+
+  // Função para obter equipamento atual com coordenadas
+  const getEquipamentoAtual = () => {
+    return equipamentos.find(eqp => 
+      (typeof eqp === 'object' ? eqp.nome : eqp) === equipamento
+    );
   };
 
   // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
@@ -681,16 +702,9 @@ export default function App() {
       position: "relative",
       width: "100%",
       height: isMobile ? "300px" : "400px",
-      background: `
-        linear-gradient(45deg, 
-          #1e3a8a 0%, 
-          #3b82f6 20%, 
-          #60a5fa 40%, 
-          #93c5fd 60%, 
-          #bfdbfe 80%, 
-          #dbeafe 100%
-        )
-      `,
+      background: mapaSatelite 
+        ? "linear-gradient(135deg, #0f766e 0%, #134e4a 50%, #1e3a8a 100%)" 
+        : "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 20%, #60a5fa 40%, #93c5fd 60%, #bfdbfe 80%, #dbeafe 100%)",
       borderRadius: "12px",
       overflow: "hidden",
       border: "2px solid #475569",
@@ -703,10 +717,10 @@ export default function App() {
       left: 0,
       width: "100%",
       height: "100%",
-      backgroundImage: `
-        linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px)
-      `,
+      backgroundImage: mapaSatelite 
+        ? "none"
+        : `linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px),
+           linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px)`,
       backgroundSize: "50px 50px",
     },
     mapOverlay: {
@@ -753,12 +767,6 @@ export default function App() {
       marginBottom: "15px",
       flexWrap: "wrap",
     },
-    mapForm: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
-      gap: "15px",
-      marginBottom: "20px",
-    },
     equipmentList: {
       marginTop: "20px",
       padding: "15px",
@@ -778,7 +786,7 @@ export default function App() {
     },
     coordinatesDisplay: {
       background: "rgba(30, 41, 59, 0.8)",
-      padding: "10px 15px",
+      padding: "15px",
       borderRadius: "8px",
       border: "1px solid #475569",
       marginBottom: "15px",
@@ -804,6 +812,16 @@ export default function App() {
       position: "absolute",
       background: "rgba(59, 130, 246, 0.5)",
       borderRadius: "20px",
+    },
+    satelliteFeature: {
+      position: "absolute",
+      background: "rgba(168, 85, 247, 0.3)",
+      border: "2px solid #a855f7",
+      borderRadius: "8px",
+      padding: "5px 10px",
+      fontSize: "0.8rem",
+      color: "white",
+      fontWeight: "bold",
     }
   };
 
@@ -874,6 +892,8 @@ export default function App() {
     }
   };
 
+  const equipamentoAtual = getEquipamentoAtual();
+
   return (
     <div style={styles.container}>
       {/* 🎯 HEADER */}
@@ -917,15 +937,26 @@ export default function App() {
               background: showMap ? "#ef4444" : "linear-gradient(135deg, #1e40af, #3b82f6)"
             }}
             onClick={() => setShowMap(!showMap)}
+            disabled={!equipamento}
           >
-            {showMap ? "❌ Cancelar Seleção" : "📍 Adicionar Equipamento no Mapa"}
+            {showMap ? "❌ Cancelar Seleção" : "📍 Definir Localização do Equipamento"}
+          </button>
+          
+          <button 
+            style={{
+              ...styles.secondaryButton,
+              background: mapaSatelite ? "linear-gradient(135deg, #0f766e, #14b8a6)" : "transparent"
+            }}
+            onClick={() => setMapaSatelite(!mapaSatelite)}
+          >
+            {mapaSatelite ? "🗺️ Mapa Normal" : "🛰️ Mapa Satélite"}
           </button>
           
           {showMap && (
             <button 
               style={styles.secondaryButton}
               onClick={() => {
-                setNovoEquipamento({ nome: "", latitude: "", longitude: "" });
+                setCoordenadasSelecionadas({ latitude: "", longitude: "" });
               }}
             >
               🗑️ Limpar Localização
@@ -934,11 +965,11 @@ export default function App() {
         </div>
 
         {/* COORDENADAS SELECIONADAS */}
-        {(novoEquipamento.latitude || novoEquipamento.longitude) && (
+        {(coordenadasSelecionadas.latitude || (equipamentoAtual && equipamentoAtual.latitude)) && (
           <div style={styles.coordinatesDisplay}>
-            <strong>📍 Coordenadas Selecionadas:</strong><br />
-            Latitude: {novoEquipamento.latitude} | 
-            Longitude: {novoEquipamento.longitude}
+            <strong>📍 Coordenadas {coordenadasSelecionadas.latitude ? 'Selecionadas' : 'do Equipamento'}:</strong><br />
+            Latitude: {coordenadasSelecionadas.latitude || equipamentoAtual?.latitude} | 
+            Longitude: {coordenadasSelecionadas.longitude || equipamentoAtual?.longitude}
           </div>
         )}
 
@@ -947,7 +978,7 @@ export default function App() {
           style={styles.mapContainer}
           onClick={handleMapClick}
         >
-          {/* Grade do mapa */}
+          {/* Grade do mapa (apenas no modo normal) */}
           <div style={styles.mapGrid} />
           
           {/* Elementos do mapa */}
@@ -967,21 +998,20 @@ export default function App() {
               ...styles.mapFeature,
               top: '20%',
               left: '20%',
-              background: 'rgba(34, 197, 94, 0.4)'
+              background: mapaSatelite ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.4)'
             }}>🌾 Plantação</div>
             
             <div style={{
               ...styles.mapFeature,
               top: '60%',
               left: '60%',
-              background: 'rgba(234, 179, 8, 0.4)'
+              background: mapaSatelite ? 'rgba(234, 179, 8, 0.5)' : 'rgba(234, 179, 8, 0.4)'
             }}>🏠 Sede</div>
             
             <div style={{
-              ...styles.mapFeature,
+              ...(mapaSatelite ? styles.satelliteFeature : styles.mapFeature),
               top: '40%',
               left: '40%',
-              background: 'rgba(168, 85, 247, 0.4)'
             }}>📡 Estação</div>
           </div>
 
@@ -994,14 +1024,14 @@ export default function App() {
                   Clique no mapa para selecionar a localização
                 </div>
                 <div style={{fontSize: "0.9rem", opacity: 0.8}}>
-                  As coordenadas serão automaticamente preenchidas no formulário
+                  As coordenadas serão salvas para o equipamento selecionado
                 </div>
               </div>
             </div>
           )}
 
-          {/* Marcador no mapa */}
-          {novoEquipamento.latitude && novoEquipamento.longitude && (
+          {/* Marcador no mapa - mostra coordenadas selecionadas ou do equipamento */}
+          {(coordenadasSelecionadas.latitude || (equipamentoAtual && equipamentoAtual.latitude)) && (
             <>
               <div style={{
                 ...styles.mapMarkerPulse,
@@ -1014,13 +1044,13 @@ export default function App() {
                   left: "50%",
                   top: "50%"
                 }}
-                title={`Lat: ${novoEquipamento.latitude}, Lng: ${novoEquipamento.longitude}`}
+                title={`Lat: ${coordenadasSelecionadas.latitude || equipamentoAtual?.latitude}, Lng: ${coordenadasSelecionadas.longitude || equipamentoAtual?.longitude}`}
               />
             </>
           )}
 
           {/* Mensagem quando não está no modo de seleção */}
-          {!showMap && !novoEquipamento.latitude && (
+          {!showMap && !coordenadasSelecionadas.latitude && (!equipamentoAtual || !equipamentoAtual.latitude) && (
             <div style={styles.mapOverlay}>
               <div>
                 <div style={{fontSize: "3rem", marginBottom: "10px"}}>🗺️</div>
@@ -1028,98 +1058,77 @@ export default function App() {
                   Mapa da Fazenda Ribeirão Preto
                 </div>
                 <div style={{fontSize: "0.9rem", opacity: 0.8, marginTop: "10px"}}>
-                  Clique em "Adicionar Equipamento" para posicionar um novo sensor
+                  {equipamento 
+                    ? "Clique em 'Definir Localização' para posicionar o equipamento selecionado"
+                    : "Selecione um equipamento para definir sua localização"
+                  }
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* FORMULÁRIO DE CADASTRO */}
-        {showMap && (
-          <div>
-            <div style={styles.mapForm}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>📝 Nome do Equipamento</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  value={novoEquipamento.nome}
-                  onChange={(e) => setNovoEquipamento(prev => ({...prev, nome: e.target.value}))}
-                  placeholder="Ex: Pluviometro_01"
-                />
-              </div>
-              
-              <div style={styles.formGroup}>
-                <label style={styles.label}>📍 Latitude</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  value={novoEquipamento.latitude}
-                  readOnly
-                  placeholder="Clique no mapa para definir"
-                />
-              </div>
-              
-              <div style={styles.formGroup}>
-                <label style={styles.label}>📍 Longitude</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  value={novoEquipamento.longitude}
-                  readOnly
-                  placeholder="Clique no mapa para definir"
-                />
-              </div>
-            </div>
-
-            <div style={styles.buttonGroup}>
-              <button 
-                style={{
-                  ...styles.primaryButton,
-                  opacity: (!novoEquipamento.nome || !novoEquipamento.latitude) ? 0.6 : 1
-                }}
-                onClick={handleCadastrarEquipamento}
-                disabled={cadastrando || !novoEquipamento.nome || !novoEquipamento.latitude}
-              >
-                {cadastrando ? (
-                  <>
-                    <div style={{...styles.spinner, width: "16px", height: "16px", marginRight: "8px"}}></div>
-                    Cadastrando...
-                  </>
-                ) : (
-                  "💾 Cadastrar Equipamento"
-                )}
-              </button>
-            </div>
+        {/* BOTÃO PARA SALVAR COORDENADAS */}
+        {showMap && coordenadasSelecionadas.latitude && (
+          <div style={styles.buttonGroup}>
+            <button 
+              style={styles.primaryButton}
+              onClick={salvarCoordenadas}
+              disabled={salvandoCoordenadas}
+            >
+              {salvandoCoordenadas ? (
+                <>
+                  <div style={{...styles.spinner, width: "16px", height: "16px", marginRight: "8px"}}></div>
+                  Salvando...
+                </>
+              ) : (
+                `💾 Salvar Coordenadas para ${equipamento}`
+              )}
+            </button>
           </div>
         )}
 
-        {/* LISTA DE EQUIPAMENTOS CADASTRADOS */}
+        {/* LISTA DE EQUIPAMENTOS COM COORDENADAS */}
         <div style={styles.equipmentList}>
           <h4 style={{...styles.cardTitle, marginBottom: "15px", fontSize: "1.1rem"}}>
-            📋 Equipamentos Cadastrados ({equipamentos.length})
+            📋 Equipamentos Cadastrados
           </h4>
           {equipamentos.length === 0 ? (
             <div style={{textAlign: "center", padding: "20px", color: "#94a3b8"}}>
-              Nenhum equipamento cadastrado ainda
+              Nenhum equipamento cadastrado
             </div>
           ) : (
-            equipamentos.map((eqp, index) => (
-              <div key={index} style={styles.equipmentItem}>
-                <span>📡 {eqp}</span>
-                <button 
-                  style={{
-                    ...styles.secondaryButton,
-                    padding: "6px 12px",
-                    fontSize: "0.8rem"
-                  }}
-                  onClick={() => setEquipamento(eqp)}
-                >
-                  Selecionar
-                </button>
-              </div>
-            ))
+            equipamentos.map((eqp, index) => {
+              const nome = typeof eqp === 'object' ? eqp.nome : eqp;
+              const latitude = typeof eqp === 'object' ? eqp.latitude : '';
+              const longitude = typeof eqp === 'object' ? eqp.longitude : '';
+              
+              return (
+                <div key={index} style={{
+                  ...styles.equipmentItem,
+                  background: nome === equipamento ? 'rgba(59, 130, 246, 0.3)' : 'rgba(30, 41, 59, 0.8)'
+                }}>
+                  <div>
+                    <div style={{fontWeight: 'bold', marginBottom: '4px'}}>📡 {nome}</div>
+                    {latitude && longitude && (
+                      <div style={{fontSize: '0.8rem', color: '#94a3b8'}}>
+                        📍 {latitude}, {longitude}
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    style={{
+                      ...styles.secondaryButton,
+                      padding: "6px 12px",
+                      fontSize: "0.8rem"
+                    }}
+                    onClick={() => setEquipamento(nome)}
+                  >
+                    {nome === equipamento ? "Selecionado" : "Selecionar"}
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
       </div>
@@ -1143,11 +1152,14 @@ export default function App() {
                 onChange={(e) => setEquipamento(e.target.value)}
               >
                 <option value="">Selecione um equipamento</option>
-                {equipamentos.map((eqp) => (
-                  <option key={eqp} value={eqp}>
-                    {eqp}
-                  </option>
-                ))}
+                {equipamentos.map((eqp, index) => {
+                  const nome = typeof eqp === 'object' ? eqp.nome : eqp;
+                  return (
+                    <option key={index} value={nome}>
+                      {nome}
+                    </option>
+                  );
+                })}
               </select>
             )}
           </div>
