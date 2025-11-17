@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import "chart.js/auto";
 
@@ -13,26 +13,17 @@ export default function App() {
   const [erro, setErro] = useState("");
   const [periodo, setPeriodo] = useState("24h");
   const [totalChuva, setTotalChuva] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeTab, setActiveTab] = useState("chuva");
-  
-  // Estados para o mapa
-  const [showMap, setShowMap] = useState(false);
-  const [coordenadasSelecionadas, setCoordenadasSelecionadas] = useState(null);
-  const [salvandoCoordenadas, setSalvandoCoordenadas] = useState(false);
-  const [mapType, setMapType] = useState("satellite");
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
-  // Referências
-  const mapContainerRef = useRef(null);
-
-  // Detecta se é mobile (após montagem)
+  // Detecta se é mobile
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -41,33 +32,6 @@ export default function App() {
   useEffect(() => {
     carregarEquipamentos();
   }, []);
-
-  // 🔄 Aplicar filtro das 24h automaticamente quando equipamento estiver disponível
-  useEffect(() => {
-    if (equipamento && equipamento !== "") {
-      setTimeout(() => {
-        calcularPeriodoRapido("24h");
-      }, 100);
-    }
-  }, [equipamento]);
-
-  // 🗺️ Função para lidar com clique no mapa
-  const handleMapClick = (e) => {
-    if (!showMap || !equipamento) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Calcula coordenadas baseadas na posição do clique (simulação realista)
-    const lat = (-14.2350 + ((y / rect.height) - 0.5) * 0.2).toFixed(6);
-    const lng = (-51.9253 + ((x / rect.width) - 0.5) * 0.2).toFixed(6);
-    
-    setCoordenadasSelecionadas({
-      lat: parseFloat(lat),
-      lng: parseFloat(lng)
-    });
-  };
 
   async function carregarEquipamentos() {
     setLoadingEquipamentos(true);
@@ -80,104 +44,30 @@ export default function App() {
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
+      // ✅ SEMPRE define o primeiro equipamento quando a lista estiver pronta
       if (listaEquipamentos.length > 0) {
-        setEquipamento(listaEquipamentos[0].nome || listaEquipamentos[0]);
+        setEquipamento(listaEquipamentos[0]);
       }
     } catch (e) {
       console.error("Erro ao carregar equipamentos:", e);
-      const listaPadrao = [
-        { 
-          nome: "Pluviometro_01", 
-          latitude: "-14.235004", 
-          longitude: "-51.925280" 
-        },
-        { 
-          nome: "Pluviometro_02", 
-          latitude: "-14.240000", 
-          longitude: "-51.930000" 
-        },
-        { 
-          nome: "Estacao_Central", 
-          latitude: "-14.230000", 
-          longitude: "-51.920000" 
-        }
-      ];
+      const listaPadrao = ["Pluviometro_01"];
       setEquipamentos(listaPadrao);
-      setEquipamento(listaPadrao[0].nome);
+      setEquipamento(listaPadrao[0]);
     } finally {
       setLoadingEquipamentos(false);
     }
   }
 
-  // 🗺️ Funções para o mapa
-  const salvarCoordenadas = async () => {
-    if (!equipamento || !coordenadasSelecionadas) {
-      setErro("Selecione um equipamento e uma localização no mapa");
-      return;
+  // 🔄 NOVO: Aplicar filtro das 24h automaticamente quando equipamento estiver disponível
+  useEffect(() => {
+    if (equipamento && equipamento !== "") {
+      console.log("🎯 Aplicando filtro automático das 24h para:", equipamento);
+      // Pequeno delay para garantir que tudo está carregado
+      setTimeout(() => {
+        calcularPeriodoRapido("24h");
+      }, 100);
     }
-
-    setSalvandoCoordenadas(true);
-    try {
-      // Simulação de salvamento - substitua pela sua API real
-      const response = await fetch(`${baseUrl}/api/equipamentos/coordenadas`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          equipamento: equipamento,
-          latitude: coordenadasSelecionadas.lat.toFixed(6),
-          longitude: coordenadasSelecionadas.lng.toFixed(6)
-        }),
-      });
-
-      if (response.ok) {
-        // Atualiza a lista local de equipamentos
-        setEquipamentos(prev => prev.map(eqp => 
-          (eqp.nome === equipamento || eqp === equipamento) 
-            ? { 
-                ...eqp, 
-                latitude: coordenadasSelecionadas.lat.toFixed(6), 
-                longitude: coordenadasSelecionadas.lng.toFixed(6) 
-              }
-            : eqp
-        ));
-        
-        setErro("");
-        setShowMap(false);
-        alert("Coordenadas salvas com sucesso!");
-      } else {
-        throw new Error("Erro ao salvar coordenadas");
-      }
-    } catch (error) {
-      setErro("Erro ao salvar coordenadas: " + error.message);
-    } finally {
-      setSalvandoCoordenadas(false);
-    }
-  };
-
-  // Função para obter equipamento atual com coordenadas
-  const getEquipamentoAtual = () => {
-    return equipamentos.find(eqp => 
-      (typeof eqp === 'object' ? eqp.nome : eqp) === equipamento
-    );
-  };
-
-  // Função para visualizar equipamento no mapa
-  const visualizarNoMapa = (equip) => {
-    const nome = typeof equip === 'object' ? equip.nome : equip;
-    const latitude = typeof equip === 'object' ? equip.latitude : '';
-    const longitude = typeof equip === 'object' ? equip.longitude : '';
-    
-    if (latitude && longitude) {
-      setEquipamento(nome);
-      setCoordenadasSelecionadas({ 
-        lat: parseFloat(latitude), 
-        lng: parseFloat(longitude) 
-      });
-      setShowMap(true);
-    }
-  };
+  }, [equipamento]);
 
   // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
@@ -224,6 +114,7 @@ export default function App() {
     const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
     const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
 
+    console.log(`📊 Aplicando filtro ${p}:`, { inicioBanco, finalBanco });
     carregarComDatas(inicioBanco, finalBanco);
   }
 
@@ -237,6 +128,7 @@ export default function App() {
       if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
@@ -267,6 +159,7 @@ export default function App() {
       if (dataFinalBanco) params.append("data_final", dataFinalBanco);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
@@ -286,12 +179,13 @@ export default function App() {
     setDataInicial("");
     setDataFinal("");
     setPeriodo("");
+    // Ao limpar, volta para as 24h
     setTimeout(() => {
       calcularPeriodoRapido("24h");
     }, 100);
   }
 
-  // 🧮 Agrupar por hora
+  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
   function agruparPorHora(lista) {
     const mapa = {};
 
@@ -433,7 +327,7 @@ export default function App() {
     }
   };
 
-  // Estilos DARK MODE com tema azul
+  // Estilos DARK MODE com tema azul - OTIMIZADO
   const styles = {
     container: {
       minHeight: "100vh",
@@ -718,136 +612,10 @@ export default function App() {
       boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    // 🗺️ Estilos para o mapa customizado
-    mapCard: {
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "15px",
-      padding: isMobile ? "20px" : "25px",
-      marginBottom: isMobile ? "20px" : "25px",
-      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
-      backdropFilter: "blur(10px)",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    mapContainer: {
-      position: "relative",
-      width: "100%",
-      height: isMobile ? "400px" : "500px",
-      borderRadius: "12px",
-      overflow: "hidden",
-      border: "2px solid #475569",
-      marginBottom: "20px",
-      background: mapType === "satellite" 
-        ? "linear-gradient(135deg, #0f766e 0%, #134e4a 50%, #1e3a8a 100%)" 
-        : "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 20%, #60a5fa 40%, #93c5fd 60%, #bfdbfe 80%, #dbeafe 100%)",
-      cursor: showMap ? "crosshair" : "default",
-    },
-    mapGrid: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      backgroundImage: mapType === "satellite" 
-        ? "none"
-        : `linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px),
-           linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px)`,
-      backgroundSize: "50px 50px",
-    },
-    mapOverlay: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      fontSize: isMobile ? "1rem" : "1.2rem",
-      fontWeight: "500",
-      textAlign: "center",
-      padding: "20px",
-      background: showMap ? "rgba(30, 41, 59, 0.7)" : "rgba(30, 41, 59, 0.9)",
-      transition: "all 0.3s ease",
-      zIndex: 1000,
-    },
-    mapMarker: {
-      position: "absolute",
-      width: "24px",
-      height: "24px",
-      background: "#ef4444",
-      border: "3px solid white",
-      borderRadius: "50%",
-      transform: "translate(-50%, -50%)",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-      cursor: "pointer",
-      zIndex: 10,
-    },
-    mapMarkerPulse: {
-      position: "absolute",
-      width: "40px",
-      height: "40px",
-      background: "rgba(239, 68, 68, 0.4)",
-      borderRadius: "50%",
-      transform: "translate(-50%, -50%)",
-      animation: "pulse 1.5s infinite",
-    },
-    mapControls: {
-      display: "flex",
-      gap: "10px",
-      marginBottom: "15px",
-      flexWrap: "wrap",
-    },
-    equipmentList: {
-      marginTop: "20px",
-      padding: "15px",
-      background: "rgba(30, 41, 59, 0.6)",
-      borderRadius: "10px",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    equipmentItem: {
-      padding: "10px 15px",
-      marginBottom: "8px",
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "8px",
-      border: "1px solid rgba(100, 116, 139, 0.3)",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    coordinatesDisplay: {
-      background: "rgba(30, 41, 59, 0.8)",
-      padding: "15px",
-      borderRadius: "8px",
-      border: "1px solid #475569",
-      marginBottom: "15px",
-      fontSize: "0.9rem",
-      color: "#cbd5e1",
-    },
-    mapFeatures: {
-      position: "absolute",
-      width: "100%",
-      height: "100%",
-    },
-    mapFeature: {
-      position: "absolute",
-      background: "rgba(34, 197, 94, 0.3)",
-      border: "2px solid #22c55e",
-      borderRadius: "8px",
-      padding: "5px 10px",
-      fontSize: "0.8rem",
-      color: "white",
-      fontWeight: "bold",
-    },
-    river: {
-      position: "absolute",
-      background: "rgba(59, 130, 246, 0.5)",
-      borderRadius: "20px",
     }
   };
 
-  // Função para renderizar o gráfico ativo
+  // Função para renderizar o gráfico ativo com cores azuis
   const renderActiveChart = () => {
     switch (activeTab) {
       case "chuva":
@@ -914,11 +682,9 @@ export default function App() {
     }
   };
 
-  const equipamentoAtual = getEquipamentoAtual();
-
   return (
     <div style={styles.container}>
-      {/* 🎯 HEADER */}
+      {/* 🎯 HEADER ELEGANTE - DARK MODE */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div>
@@ -948,246 +714,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🗺️ CARD DO MAPA CUSTOMIZADO */}
-      <div style={styles.mapCard}>
-        <h3 style={styles.cardTitle}>🗺️ Mapa de Equipamentos</h3>
-        
-        <div style={styles.mapControls}>
-          <button 
-            style={{
-              ...styles.primaryButton,
-              background: showMap ? "#ef4444" : "linear-gradient(135deg, #1e40af, #3b82f6)"
-            }}
-            onClick={() => setShowMap(!showMap)}
-            disabled={!equipamento}
-          >
-            {showMap ? "❌ Fechar Mapa" : "🗺️ Abrir Mapa Interativo"}
-          </button>
-          
-          {showMap && (
-            <button 
-              style={{
-                ...styles.secondaryButton,
-                background: mapType === "satellite" ? "linear-gradient(135deg, #0f766e, #14b8a6)" : "transparent"
-              }}
-              onClick={() => setMapType(mapType === "satellite" ? "normal" : "satellite")}
-            >
-              {mapType === "satellite" ? "🗺️ Mapa Normal" : "🛰️ Mapa Satélite"}
-            </button>
-          )}
-          
-          {showMap && coordenadasSelecionadas && (
-            <button 
-              style={styles.primaryButton}
-              onClick={salvarCoordenadas}
-              disabled={salvandoCoordenadas}
-            >
-              {salvandoCoordenadas ? (
-                <>
-                  <div style={{...styles.spinner, width: "16px", height: "16px", marginRight: "8px"}}></div>
-                  Salvando...
-                </>
-              ) : (
-                `💾 Salvar para ${equipamento}`
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* COORDENADAS */}
-        {(coordenadasSelecionadas || (equipamentoAtual && equipamentoAtual.latitude)) && (
-          <div style={styles.coordinatesDisplay}>
-            <strong>📍 {coordenadasSelecionadas ? 'Coordenadas Selecionadas' : 'Localização do Equipamento'}:</strong><br />
-            {coordenadasSelecionadas ? (
-              <>
-                Latitude: {coordenadasSelecionadas.lat.toFixed(6)} | 
-                Longitude: {coordenadasSelecionadas.lng.toFixed(6)}
-              </>
-            ) : (
-              <>
-                Latitude: {equipamentoAtual?.latitude} | 
-                Longitude: {equipamentoAtual?.longitude}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* MAPA CUSTOMIZADO */}
-        <div 
-          ref={mapContainerRef}
-          style={styles.mapContainer}
-          onClick={handleMapClick}
-        >
-          {/* Grade do mapa (apenas no modo normal) */}
-          <div style={styles.mapGrid} />
-          
-          {/* Elementos do mapa */}
-          <div style={styles.mapFeatures}>
-            {/* Rio */}
-            <div style={{
-              ...styles.river,
-              top: '30%',
-              left: '10%',
-              width: '80%',
-              height: '40px',
-              transform: 'rotate(-5deg)'
-            }} />
-            
-            {/* Áreas da fazenda */}
-            <div style={{
-              ...styles.mapFeature,
-              top: '20%',
-              left: '20%',
-              background: mapType === "satellite" ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.4)'
-            }}>🌾 Plantação</div>
-            
-            <div style={{
-              ...styles.mapFeature,
-              top: '60%',
-              left: '60%',
-              background: mapType === "satellite" ? 'rgba(234, 179, 8, 0.5)' : 'rgba(234, 179, 8, 0.4)'
-            }}>🏠 Sede</div>
-            
-            <div style={{
-              ...styles.mapFeature,
-              top: '40%',
-              left: '40%',
-              background: mapType === "satellite" ? 'rgba(168, 85, 247, 0.5)' : 'rgba(168, 85, 247, 0.4)'
-            }}>📡 Estação</div>
-          </div>
-
-          {/* Marcador no mapa */}
-          {(coordenadasSelecionadas || (equipamentoAtual && equipamentoAtual.latitude)) && (
-            <>
-              <div style={{
-                ...styles.mapMarkerPulse,
-                left: "50%",
-                top: "50%"
-              }} />
-              <div 
-                style={{
-                  ...styles.mapMarker,
-                  left: "50%",
-                  top: "50%"
-                }}
-                title={coordenadasSelecionadas 
-                  ? `Lat: ${coordenadasSelecionadas.lat.toFixed(6)}, Lng: ${coordenadasSelecionadas.lng.toFixed(6)}`
-                  : `Lat: ${equipamentoAtual?.latitude}, Lng: ${equipamentoAtual?.longitude}`
-                }
-              />
-            </>
-          )}
-
-          {/* Overlay com instruções */}
-          {showMap && (
-            <div style={styles.mapOverlay}>
-              <div>
-                <div style={{fontSize: "3rem", marginBottom: "10px"}}>📍</div>
-                <div style={{fontSize: isMobile ? "1.1rem" : "1.3rem", marginBottom: "10px"}}>
-                  Clique no mapa para selecionar a localização
-                </div>
-                <div style={{fontSize: "0.9rem", opacity: 0.8}}>
-                  As coordenadas serão automaticamente capturadas
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Mensagem quando não está no modo de seleção */}
-          {!showMap && (
-            <div style={styles.mapOverlay}>
-              <div>
-                <div style={{fontSize: "3rem", marginBottom: "10px"}}>🗺️</div>
-                <div style={{fontSize: isMobile ? "1.1rem" : "1.3rem"}}>
-                  Mapa da Fazenda Ribeirão Preto
-                </div>
-                <div style={{fontSize: "0.9rem", opacity: 0.8, marginTop: "10px"}}>
-                  {equipamento 
-                    ? "Clique em 'Abrir Mapa' para visualizar e definir localizações"
-                    : "Selecione um equipamento para usar o mapa"
-                  }
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* INSTRUÇÕES DO MAPA */}
-        {showMap && (
-          <div style={{
-            background: "rgba(59, 130, 246, 0.1)",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            border: "1px solid rgba(59, 130, 246, 0.3)",
-            marginBottom: "15px",
-            fontSize: "0.9rem",
-            color: "#93c5fd"
-          }}>
-            <strong>💡 Como usar:</strong> Clique em qualquer lugar do mapa para selecionar uma localização. 
-            As coordenadas serão automaticamente capturadas e mostradas acima.
-          </div>
-        )}
-
-        {/* LISTA DE EQUIPAMENTOS */}
-        <div style={styles.equipmentList}>
-          <h4 style={{...styles.cardTitle, marginBottom: "15px", fontSize: "1.1rem"}}>
-            📋 Equipamentos Cadastrados
-          </h4>
-          {equipamentos.length === 0 ? (
-            <div style={{textAlign: "center", padding: "20px", color: "#94a3b8"}}>
-              Nenhum equipamento cadastrado
-            </div>
-          ) : (
-            equipamentos.map((eqp, index) => {
-              const nome = typeof eqp === 'object' ? eqp.nome : eqp;
-              const latitude = typeof eqp === 'object' ? eqp.latitude : '';
-              const longitude = typeof eqp === 'object' ? eqp.longitude : '';
-              
-              return (
-                <div key={index} style={{
-                  ...styles.equipmentItem,
-                  background: nome === equipamento ? 'rgba(59, 130, 246, 0.3)' : 'rgba(30, 41, 59, 0.8)'
-                }}>
-                  <div>
-                    <div style={{fontWeight: 'bold', marginBottom: '4px'}}>📡 {nome}</div>
-                    {latitude && longitude && (
-                      <div style={{fontSize: '0.8rem', color: '#94a3b8'}}>
-                        📍 {latitude}, {longitude}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{display: 'flex', gap: '8px'}}>
-                    {latitude && longitude && (
-                      <button 
-                        style={{
-                          ...styles.secondaryButton,
-                          padding: "6px 12px",
-                          fontSize: "0.8rem"
-                        }}
-                        onClick={() => visualizarNoMapa(eqp)}
-                      >
-                        🗺️ Ver
-                      </button>
-                    )}
-                    <button 
-                      style={{
-                        ...styles.secondaryButton,
-                        padding: "6px 12px",
-                        fontSize: "0.8rem"
-                      }}
-                      onClick={() => setEquipamento(nome)}
-                    >
-                      {nome === equipamento ? "Selecionado" : "Selecionar"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* 🎛️ PAINEL DE CONTROLE */}
+      {/* 🎛️ PAINEL DE CONTROLE - DARK MODE */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>⚙️ Configurações</h3>
         
@@ -1204,16 +731,15 @@ export default function App() {
                 style={styles.select}
                 value={equipamento}
                 onChange={(e) => setEquipamento(e.target.value)}
+                onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+                onBlur={(e) => e.target.style.borderColor = "#475569"}
               >
                 <option value="">Selecione um equipamento</option>
-                {equipamentos.map((eqp, index) => {
-                  const nome = typeof eqp === 'object' ? eqp.nome : eqp;
-                  return (
-                    <option key={index} value={nome}>
-                      {nome}
-                    </option>
-                  );
-                })}
+                {equipamentos.map((eqp) => (
+                  <option key={eqp} value={eqp}>
+                    {eqp}
+                  </option>
+                ))}
               </select>
             )}
           </div>
@@ -1225,6 +751,8 @@ export default function App() {
               style={styles.input}
               value={dataInicial}
               onChange={(e) => setDataInicial(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
             />
           </div>
 
@@ -1235,6 +763,8 @@ export default function App() {
               style={styles.input}
               value={dataFinal}
               onChange={(e) => setDataFinal(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
             />
           </div>
         </div>
@@ -1243,6 +773,8 @@ export default function App() {
           <button 
             style={styles.primaryButton} 
             onClick={() => carregar()}
+            onMouseOver={(e) => e.target.style.transform = "translateY(-2px)"}
+            onMouseOut={(e) => e.target.style.transform = "translateY(0)"}
             disabled={!equipamento}
           >
             🔍 Aplicar Filtros
@@ -1250,13 +782,15 @@ export default function App() {
           <button 
             style={styles.secondaryButton} 
             onClick={limparFiltro}
+            onMouseOver={(e) => e.target.style.backgroundColor = "#374151"}
+            onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
           >
             🗑️ Limpar Filtros
           </button>
         </div>
       </div>
 
-      {/* ⏱️ FILTROS RÁPIDOS */}
+      {/* ⏱️ FILTROS RÁPIDOS - DARK MODE */}
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>⏱️ Período Rápido</h3>
         <div style={styles.quickFilters}>
@@ -1268,6 +802,8 @@ export default function App() {
                 ...(periodo === p ? styles.quickFilterActive : {})
               }}
               onClick={() => calcularPeriodoRapido(p)}
+              onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#374151")}
+              onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
               disabled={!equipamento}
             >
               {p === "24h" && "⏰ Últimas 24h"}
@@ -1278,7 +814,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 📊 STATUS E ERROS */}
+      {/* 📊 STATUS E ERROS - DARK MODE */}
       <div>
         {loading && periodo === "24h" && (
           <div style={styles.loading}>
@@ -1317,7 +853,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 📈 GRÁFICOS COM ABAS */}
+      {/* 📈 GRÁFICOS COM ABAS - DARK MODE OTIMIZADO */}
       {agrupados.length > 0 && (
         <div style={styles.chartsSection}>
           {/* ABAS DE NAVEGAÇÃO */}
@@ -1334,13 +870,15 @@ export default function App() {
                   ...(activeTab === tab.id ? styles.activeTab : {})
                 }}
                 onClick={() => setActiveTab(tab.id)}
+                onMouseOver={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "#374151")}
+                onMouseOut={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "transparent")}
               >
                 {isMobile ? tab.emoji : tab.label}
               </div>
             ))}
           </div>
 
-          {/* GRÁFICO ATIVO */}
+          {/* GRÁFICO ATIVO - LAYOUT OTIMIZADO */}
           <div style={styles.chartCard}>
             <div style={styles.chartHeader}>
               <h3 style={styles.chartTitle}>
@@ -1354,7 +892,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* RESUMO DO PERÍODO */}
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO - MODIFICADO */}
           <div style={styles.summaryCard}>
             <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
             <div style={{ 
@@ -1386,21 +924,6 @@ export default function App() {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
-        }
-        
-        @keyframes pulse {
-          0% {
-            transform: translate(-50%, -50%) scale(1);
-            opacity: 0.7;
-          }
-          70% {
-            transform: translate(-50%, -50%) scale(2);
-            opacity: 0;
-          }
-          100% {
-            transform: translate(-50%, -50%) scale(2);
-            opacity: 0;
-          }
         }
         
         @media (max-width: 768px) {
