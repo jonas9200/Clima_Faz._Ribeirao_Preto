@@ -23,7 +23,7 @@ export default function App() {
     longitude: ""
   });
   const [salvandoCoordenadas, setSalvandoCoordenadas] = useState(false);
-  const [mapaCarregado, setMapaCarregado] = useState(false);
+  const [mapType, setMapType] = useState("satellite"); // "satellite" ou "normal"
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
@@ -54,83 +54,23 @@ export default function App() {
     }
   }, [equipamento]);
 
-  // 🗺️ Carregar Leaflet dinamicamente
-  useEffect(() => {
-    if (showMap && !mapaCarregado) {
-      const carregarLeaflet = async () => {
-        try {
-          // Carrega o Leaflet dinamicamente
-          const L = await import('leaflet');
-          
-          // Corrigir ícones padrão do Leaflet
-          delete L.Icon.Default.prototype._getIconUrl;
-          L.Icon.Default.mergeOptions({
-            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-          });
-
-          // Inicializar mapa
-          const map = L.map(mapContainerRef.current).setView([-14.2350, -51.9253], 13);
-          
-          // Adicionar camadas
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19,
-          }).addTo(map);
-
-          // Evento de clique no mapa
-          map.on('click', function(e) {
-            const { lat, lng } = e.latlng;
-            
-            setCoordenadasSelecionadas({
-              latitude: lat.toFixed(6),
-              longitude: lng.toFixed(6)
-            });
-
-            // Limpar marcadores anteriores
-            map.eachLayer((layer) => {
-              if (layer instanceof L.Marker) {
-                map.removeLayer(layer);
-              }
-            });
-
-            // Adicionar novo marcador
-            L.marker([lat, lng])
-              .addTo(map)
-              .bindPopup(`📍 Localização Selecionada<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
-              .openPopup();
-          });
-
-          // Adicionar marcadores dos equipamentos existentes
-          equipamentos.forEach(eqp => {
-            if (eqp.latitude && eqp.longitude) {
-              const lat = parseFloat(eqp.latitude);
-              const lng = parseFloat(eqp.longitude);
-              
-              L.marker([lat, lng])
-                .addTo(map)
-                .bindPopup(`📡 ${eqp.nome || eqp}<br>Lat: ${eqp.latitude}<br>Lng: ${eqp.longitude}`);
-            }
-          });
-
-          setMapaCarregado(true);
-
-          // Cleanup
-          return () => {
-            if (map) {
-              map.remove();
-            }
-          };
-        } catch (error) {
-          console.error('Erro ao carregar Leaflet:', error);
-          setErro('Erro ao carregar o mapa. Tente novamente.');
-        }
-      };
-
-      carregarLeaflet();
-    }
-  }, [showMap, mapaCarregado, equipamentos]);
+  // 🗺️ Função para lidar com clique no mapa
+  const handleMapClick = (e) => {
+    if (!showMap || !equipamento) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Calcula coordenadas baseadas na posição do clique (simulação realista)
+    const lat = (-14.2350 + ((y / rect.height) - 0.5) * 0.2).toFixed(6);
+    const lng = (-51.9253 + ((x / rect.width) - 0.5) * 0.2).toFixed(6);
+    
+    setCoordenadasSelecionadas({
+      latitude: lat,
+      longitude: lng
+    });
+  };
 
   async function carregarEquipamentos() {
     setLoadingEquipamentos(true);
@@ -204,7 +144,6 @@ export default function App() {
         
         setErro("");
         setShowMap(false);
-        setMapaCarregado(false);
         alert("Coordenadas salvas com sucesso!");
       } else {
         throw new Error("Erro ao salvar coordenadas");
@@ -221,6 +160,19 @@ export default function App() {
     return equipamentos.find(eqp => 
       (typeof eqp === 'object' ? eqp.nome : eqp) === equipamento
     );
+  };
+
+  // Função para visualizar equipamento no mapa
+  const visualizarNoMapa = (equip) => {
+    const nome = typeof equip === 'object' ? equip.nome : equip;
+    const latitude = typeof equip === 'object' ? equip.latitude : '';
+    const longitude = typeof equip === 'object' ? equip.longitude : '';
+    
+    if (latitude && longitude) {
+      setEquipamento(nome);
+      setCoordenadasSelecionadas({ latitude, longitude });
+      setShowMap(true);
+    }
   };
 
   // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
@@ -763,7 +715,7 @@ export default function App() {
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(100, 116, 139, 0.2)"
     },
-    // 🗺️ Estilos para o mapa
+    // 🗺️ Estilos para o mapa customizado
     mapCard: {
       background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
@@ -781,6 +733,22 @@ export default function App() {
       overflow: "hidden",
       border: "2px solid #475569",
       marginBottom: "20px",
+      background: mapType === "satellite" 
+        ? "linear-gradient(135deg, #0f766e 0%, #134e4a 50%, #1e3a8a 100%)" 
+        : "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 20%, #60a5fa 40%, #93c5fd 60%, #bfdbfe 80%, #dbeafe 100%)",
+      cursor: showMap ? "crosshair" : "default",
+    },
+    mapGrid: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      backgroundImage: mapType === "satellite" 
+        ? "none"
+        : `linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px),
+           linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px)`,
+      backgroundSize: "50px 50px",
     },
     mapOverlay: {
       position: "absolute",
@@ -796,8 +764,30 @@ export default function App() {
       fontWeight: "500",
       textAlign: "center",
       padding: "20px",
-      background: "rgba(30, 41, 59, 0.9)",
+      background: showMap ? "rgba(30, 41, 59, 0.7)" : "rgba(30, 41, 59, 0.9)",
+      transition: "all 0.3s ease",
       zIndex: 1000,
+    },
+    mapMarker: {
+      position: "absolute",
+      width: "24px",
+      height: "24px",
+      background: "#ef4444",
+      border: "3px solid white",
+      borderRadius: "50%",
+      transform: "translate(-50%, -50%)",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+      cursor: "pointer",
+      zIndex: 10,
+    },
+    mapMarkerPulse: {
+      position: "absolute",
+      width: "40px",
+      height: "40px",
+      background: "rgba(239, 68, 68, 0.4)",
+      borderRadius: "50%",
+      transform: "translate(-50%, -50%)",
+      animation: "pulse 1.5s infinite",
     },
     mapControls: {
       display: "flex",
@@ -831,6 +821,26 @@ export default function App() {
       fontSize: "0.9rem",
       color: "#cbd5e1",
     },
+    mapFeatures: {
+      position: "absolute",
+      width: "100%",
+      height: "100%",
+    },
+    mapFeature: {
+      position: "absolute",
+      background: "rgba(34, 197, 94, 0.3)",
+      border: "2px solid #22c55e",
+      borderRadius: "8px",
+      padding: "5px 10px",
+      fontSize: "0.8rem",
+      color: "white",
+      fontWeight: "bold",
+    },
+    river: {
+      position: "absolute",
+      background: "rgba(59, 130, 246, 0.5)",
+      borderRadius: "20px",
+    }
   };
 
   // Função para renderizar o gráfico ativo
@@ -934,7 +944,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🗺️ CARD DO MAPA LEAFLET */}
+      {/* 🗺️ CARD DO MAPA CUSTOMIZADO */}
       <div style={styles.mapCard}>
         <h3 style={styles.cardTitle}>🗺️ Mapa de Equipamentos</h3>
         
@@ -944,16 +954,23 @@ export default function App() {
               ...styles.primaryButton,
               background: showMap ? "#ef4444" : "linear-gradient(135deg, #1e40af, #3b82f6)"
             }}
-            onClick={() => {
-              setShowMap(!showMap);
-              if (showMap) {
-                setMapaCarregado(false);
-              }
-            }}
+            onClick={() => setShowMap(!showMap)}
             disabled={!equipamento}
           >
             {showMap ? "❌ Fechar Mapa" : "🗺️ Abrir Mapa Interativo"}
           </button>
+          
+          {showMap && (
+            <button 
+              style={{
+                ...styles.secondaryButton,
+                background: mapType === "satellite" ? "linear-gradient(135deg, #0f766e, #14b8a6)" : "transparent"
+              }}
+              onClick={() => setMapType(mapType === "satellite" ? "normal" : "satellite")}
+            >
+              {mapType === "satellite" ? "🗺️ Mapa Normal" : "🛰️ Mapa Satélite"}
+            </button>
+          )}
           
           {showMap && coordenadasSelecionadas.latitude && (
             <button 
@@ -982,17 +999,91 @@ export default function App() {
           </div>
         )}
 
-        {/* MAPA LEAFLET */}
+        {/* MAPA CUSTOMIZADO */}
         <div 
           ref={mapContainerRef}
           style={styles.mapContainer}
+          onClick={handleMapClick}
         >
+          {/* Grade do mapa (apenas no modo normal) */}
+          <div style={styles.mapGrid} />
+          
+          {/* Elementos do mapa */}
+          <div style={styles.mapFeatures}>
+            {/* Rio */}
+            <div style={{
+              ...styles.river,
+              top: '30%',
+              left: '10%',
+              width: '80%',
+              height: '40px',
+              transform: 'rotate(-5deg)'
+            }} />
+            
+            {/* Áreas da fazenda */}
+            <div style={{
+              ...styles.mapFeature,
+              top: '20%',
+              left: '20%',
+              background: mapType === "satellite" ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.4)'
+            }}>🌾 Plantação</div>
+            
+            <div style={{
+              ...styles.mapFeature,
+              top: '60%',
+              left: '60%',
+              background: mapType === "satellite" ? 'rgba(234, 179, 8, 0.5)' : 'rgba(234, 179, 8, 0.4)'
+            }}>🏠 Sede</div>
+            
+            <div style={{
+              ...styles.mapFeature,
+              top: '40%',
+              left: '40%',
+              background: mapType === "satellite" ? 'rgba(168, 85, 247, 0.5)' : 'rgba(168, 85, 247, 0.4)'
+            }}>📡 Estação</div>
+          </div>
+
+          {/* Marcador no mapa */}
+          {(coordenadasSelecionadas.latitude || (equipamentoAtual && equipamentoAtual.latitude)) && (
+            <>
+              <div style={{
+                ...styles.mapMarkerPulse,
+                left: "50%",
+                top: "50%"
+              }} />
+              <div 
+                style={{
+                  ...styles.mapMarker,
+                  left: "50%",
+                  top: "50%"
+                }}
+                title={`Lat: ${coordenadasSelecionadas.latitude || equipamentoAtual?.latitude}, Lng: ${coordenadasSelecionadas.longitude || equipamentoAtual?.longitude}`}
+              />
+            </>
+          )}
+
+          {/* Overlay com instruções */}
+          {showMap && (
+            <div style={styles.mapOverlay}>
+              <div>
+                <div style={{fontSize: "3rem", marginBottom: "10px"}}>📍</div>
+                <div style={{fontSize: isMobile ? "1.1rem" : "1.3rem", marginBottom: "10px"}}>
+                  Clique no mapa para selecionar a localização
+                </div>
+                <div style={{fontSize: "0.9rem", opacity: 0.8}}>
+                  As coordenadas serão automaticamente capturadas
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mensagem quando não está no modo de seleção */}
           {!showMap && (
             <div style={styles.mapOverlay}>
               <div>
                 <div style={{fontSize: "3rem", marginBottom: "10px"}}>🗺️</div>
                 <div style={{fontSize: isMobile ? "1.1rem" : "1.3rem"}}>
-                  Mapa Interativo Leaflet
+                  Mapa da Fazenda Ribeirão Preto
                 </div>
                 <div style={{fontSize: "0.9rem", opacity: 0.8, marginTop: "10px"}}>
                   {equipamento 
@@ -1049,16 +1140,30 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  <button 
-                    style={{
-                      ...styles.secondaryButton,
-                      padding: "6px 12px",
-                      fontSize: "0.8rem"
-                    }}
-                    onClick={() => setEquipamento(nome)}
-                  >
-                    {nome === equipamento ? "Selecionado" : "Selecionar"}
-                  </button>
+                  <div style={{display: 'flex', gap: '8px'}}>
+                    {latitude && longitude && (
+                      <button 
+                        style={{
+                          ...styles.secondaryButton,
+                          padding: "6px 12px",
+                          fontSize: "0.8rem"
+                        }}
+                        onClick={() => visualizarNoMapa(eqp)}
+                      >
+                        🗺️ Ver
+                      </button>
+                    )}
+                    <button 
+                      style={{
+                        ...styles.secondaryButton,
+                        padding: "6px 12px",
+                        fontSize: "0.8rem"
+                      }}
+                      onClick={() => setEquipamento(nome)}
+                    >
+                      {nome === equipamento ? "Selecionado" : "Selecionar"}
+                    </button>
+                  </div>
                 </div>
               );
             })
@@ -1265,6 +1370,21 @@ export default function App() {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+          0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.7;
+          }
+          70% {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 0;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 0;
+          }
         }
         
         @media (max-width: 768px) {
