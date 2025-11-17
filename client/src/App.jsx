@@ -120,9 +120,9 @@ export default function App() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Coordenadas fictícias para demonstração
-    const lat = (-14.2350 + (y / rect.height) * 10).toFixed(6);
-    const lng = (-51.9253 + (x / rect.width) * 10).toFixed(6);
+    // Simulação de coordenadas baseadas na posição do clique
+    const lat = (-14.2350 + ((y / rect.height) - 0.5) * 0.1).toFixed(6);
+    const lng = (-51.9253 + ((x / rect.width) - 0.5) * 0.1).toFixed(6);
     
     setNovoEquipamento(prev => ({
       ...prev,
@@ -398,283 +398,8 @@ export default function App() {
       fontFamily: "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
       color: "#e2e8f0"
     },
-    header: {
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "20px",
-      padding: isMobile ? "20px" : "30px",
-      marginBottom: isMobile ? "20px" : "30px",
-      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
-      backdropFilter: "blur(10px)",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    headerContent: {
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      justifyContent: "space-between",
-      alignItems: isMobile ? "flex-start" : "center",
-      gap: "20px",
-    },
-    titleSection: {
-      display: "flex",
-      alignItems: "center",
-      gap: "15px",
-    },
-    logo: {
-      fontSize: isMobile ? "2rem" : "2.5rem",
-      background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
-      WebkitBackgroundClip: "text",
-      WebkitTextFillColor: "transparent",
-    },
-    title: {
-      margin: 0,
-      fontSize: isMobile ? "1.5rem" : "2rem",
-      fontWeight: "700",
-      background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
-      WebkitBackgroundClip: "text",
-      WebkitTextFillColor: "transparent",
-    },
-    subtitle: {
-      margin: "8px 0 0 0",
-      color: "#94a3b8",
-      fontSize: isMobile ? "0.9rem" : "1rem",
-      fontWeight: "400",
-    },
-    statsGrid: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-      gap: "15px",
-      width: isMobile ? "100%" : "auto",
-    },
-    statCard: {
-      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
-      padding: isMobile ? "15px" : "20px",
-      borderRadius: "15px",
-      color: "white",
-      textAlign: "center",
-      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
-    },
-    statValue: {
-      fontSize: isMobile ? "1.3rem" : "1.6rem",
-      fontWeight: "bold",
-      marginBottom: "5px",
-    },
-    statLabel: {
-      fontSize: isMobile ? "0.7rem" : "0.8rem",
-      opacity: 0.9,
-    },
-    card: {
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "15px",
-      padding: isMobile ? "20px" : "25px",
-      marginBottom: isMobile ? "20px" : "25px",
-      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
-      backdropFilter: "blur(10px)",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    cardTitle: {
-      margin: "0 0 20px 0",
-      fontSize: isMobile ? "1.2rem" : "1.3rem",
-      fontWeight: "600",
-      color: "#e2e8f0",
-      display: "flex",
-      alignItems: "center",
-      gap: "10px",
-    },
-    formGrid: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
-      gap: "15px",
-      marginBottom: "20px",
-    },
-    formGroup: {
-      display: "flex",
-      flexDirection: "column",
-    },
-    label: {
-      marginBottom: "8px",
-      fontWeight: "500",
-      color: "#cbd5e1",
-      fontSize: isMobile ? "0.85rem" : "0.9rem",
-    },
-    input: {
-      padding: "12px",
-      border: "1px solid #475569",
-      borderRadius: "8px",
-      fontSize: isMobile ? "0.85rem" : "0.9rem",
-      backgroundColor: "#1e293b",
-      color: "#e2e8f0",
-      transition: "all 0.3s ease",
-    },
-    select: {
-      padding: "12px",
-      border: "1px solid #475569",
-      borderRadius: "8px",
-      fontSize: isMobile ? "0.85rem" : "0.9rem",
-      backgroundColor: "#1e293b",
-      color: "#e2e8f0",
-      cursor: "pointer",
-      transition: "all 0.3s ease",
-    },
-    buttonGroup: {
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      gap: "12px",
-    },
-    primaryButton: {
-      padding: "12px 24px",
-      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
-      color: "white",
-      border: "none",
-      borderRadius: "8px",
-      fontSize: isMobile ? "0.85rem" : "0.9rem",
-      fontWeight: "600",
-      cursor: "pointer",
-      flex: isMobile ? "1" : "none",
-      transition: "all 0.3s ease",
-      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
-    },
-    secondaryButton: {
-      padding: "12px 24px",
-      background: "transparent",
-      color: "#94a3b8",
-      border: "1px solid #475569",
-      borderRadius: "8px",
-      fontSize: isMobile ? "0.85rem" : "0.9rem",
-      fontWeight: "600",
-      cursor: "pointer",
-      flex: isMobile ? "1" : "none",
-      transition: "all 0.3s ease",
-    },
-    quickFilters: {
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      gap: "12px",
-      flexWrap: "wrap",
-    },
-    quickFilterButton: {
-      padding: "12px 18px",
-      background: "transparent",
-      border: "1px solid #475569",
-      borderRadius: "8px",
-      fontSize: isMobile ? "0.85rem" : "0.9rem",
-      cursor: "pointer",
-      textAlign: "center",
-      flex: isMobile ? "1" : "none",
-      transition: "all 0.3s ease",
-      fontWeight: "500",
-      color: "#94a3b8",
-    },
-    quickFilterActive: {
-      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
-      color: "white",
-      borderColor: "transparent",
-      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
-    },
-    loading: {
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-      padding: "20px",
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "10px",
-      color: "#94a3b8",
-      justifyContent: "center",
-      fontSize: isMobile ? "0.9rem" : "1rem",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    spinner: {
-      width: "20px",
-      height: "20px",
-      border: "2px solid #475569",
-      borderTop: "2px solid #3b82f6",
-      borderRadius: "50%",
-      animation: "spin 1s linear infinite",
-    },
-    error: {
-      padding: "16px",
-      background: "rgba(239, 68, 68, 0.1)",
-      border: "1px solid #dc2626",
-      borderRadius: "10px",
-      color: "#fca5a5",
-      textAlign: "center",
-      fontSize: isMobile ? "0.9rem" : "1rem",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-    },
-    emptyState: {
-      textAlign: "center",
-      padding: "50px 20px",
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "15px",
-      color: "#94a3b8",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    tabsContainer: {
-      display: "flex",
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "12px",
-      padding: "5px",
-      marginBottom: "20px",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
-    tab: {
-      flex: 1,
-      padding: "12px 16px",
-      textAlign: "center",
-      borderRadius: "8px",
-      cursor: "pointer",
-      transition: "all 0.3s ease",
-      fontWeight: "500",
-      fontSize: isMobile ? "0.85rem" : "0.9rem",
-      color: "#94a3b8",
-    },
-    activeTab: {
-      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
-      color: "white",
-      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
-    },
-    chartCard: {
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "15px",
-      padding: isMobile ? "15px 20px" : "20px 25px",
-      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
-      height: isMobile ? "380px" : "420px",
-      marginBottom: isMobile ? "20px" : "25px",
-      minHeight: "380px",
-      border: "1px solid rgba(100, 116, 139, 0.2)",
-      display: "flex",
-      flexDirection: "column",
-    },
-    chartHeader: {
-      marginBottom: "12px",
-      textAlign: "center",
-      flexShrink: 0,
-    },
-    chartTitle: {
-      margin: 0,
-      fontSize: isMobile ? "1.1rem" : "1.2rem",
-      fontWeight: "600",
-      color: "#e2e8f0",
-    },
-    chartContainer: {
-      flex: 1,
-      minHeight: 0,
-      position: "relative",
-    },
-    chartsSection: {
-      marginBottom: isMobile ? "20px" : "30px",
-    },
-    summaryCard: {
-      background: "rgba(30, 41, 59, 0.8)",
-      borderRadius: "15px",
-      padding: isMobile ? "20px" : "25px",
-      marginBottom: isMobile ? "20px" : "25px",
-      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-      backdropFilter: "blur(10px)",
-      border: "1px solid rgba(100, 116, 139, 0.2)"
-    },
+    // ... (mantenha todos os outros estilos existentes)
+
     // 🗺️ Novos estilos para o mapa
     mapCard: {
       background: "rgba(30, 41, 59, 0.8)",
@@ -689,7 +414,7 @@ export default function App() {
       position: "relative",
       width: "100%",
       height: isMobile ? "300px" : "400px",
-      background: "linear-gradient(135deg, #1e3a8a, #3b82f6)",
+      background: "#1e293b",
       borderRadius: "12px",
       overflow: "hidden",
       border: "2px solid #475569",
@@ -700,18 +425,44 @@ export default function App() {
       width: "100%",
       height: "100%",
       objectFit: "cover",
-      opacity: 0.7,
+      opacity: 0.8,
+    },
+    mapOverlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(30, 41, 59, 0.3)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      fontSize: isMobile ? "1rem" : "1.2rem",
+      fontWeight: "500",
+      textAlign: "center",
+      padding: "20px",
     },
     mapMarker: {
       position: "absolute",
-      width: "20px",
-      height: "20px",
+      width: "24px",
+      height: "24px",
       background: "#ef4444",
       border: "3px solid white",
       borderRadius: "50%",
       transform: "translate(-50%, -50%)",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
       cursor: "pointer",
+      zIndex: 10,
+    },
+    mapMarkerPulse: {
+      position: "absolute",
+      width: "40px",
+      height: "40px",
+      background: "rgba(239, 68, 68, 0.4)",
+      borderRadius: "50%",
+      transform: "translate(-50%, -50%)",
+      animation: "pulse 1.5s infinite",
     },
     mapControls: {
       display: "flex",
@@ -741,6 +492,14 @@ export default function App() {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
+    },
+    coordinatesDisplay: {
+      background: "rgba(30, 41, 59, 0.8)",
+      padding: "10px 15px",
+      borderRadius: "8px",
+      border: "1px solid #475569",
+      marginBottom: "15px",
+      fontSize: "0.9rem",
     }
   };
 
@@ -871,36 +630,68 @@ export default function App() {
           )}
         </div>
 
+        {/* COORDENADAS SELECIONADAS */}
+        {(novoEquipamento.latitude || novoEquipamento.longitude) && (
+          <div style={styles.coordinatesDisplay}>
+            <strong>📍 Coordenadas Selecionadas:</strong><br />
+            Latitude: {novoEquipamento.latitude || "Não definida"} | 
+            Longitude: {novoEquipamento.longitude || "Não definida"}
+          </div>
+        )}
+
         {/* MAPA INTERATIVO */}
         <div 
           style={styles.mapContainer}
           onClick={handleMapClick}
         >
-          {/* Mapa de fundo (imagem estática para demonstração) */}
-          <div style={{
-            width: "100%",
-            height: "100%",
-            background: "linear-gradient(135deg, #1e3a8a, #3b82f6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontSize: isMobile ? "1rem" : "1.2rem",
-            fontWeight: "500"
-          }}>
-            {showMap ? "Clique no mapa para selecionar a localização" : "Mapa da Fazenda"}
-          </div>
+          {/* Imagem de mapa de fundo */}
+          <img 
+            src="https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+            alt="Mapa da fazenda"
+            style={styles.mapImage}
+            onLoad={() => setMapaCarregado(true)}
+          />
+          
+          {/* Overlay com instruções */}
+          {showMap && (
+            <div style={styles.mapOverlay}>
+              <div>
+                <div style={{fontSize: "3rem", marginBottom: "10px"}}>📍</div>
+                <div>Clique em qualquer lugar do mapa para selecionar a localização</div>
+                <div style={{fontSize: "0.9rem", opacity: 0.8, marginTop: "10px"}}>
+                  As coordenadas serão automaticamente preenchidas
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Marcador no mapa */}
           {novoEquipamento.latitude && novoEquipamento.longitude && (
-            <div 
-              style={{
-                ...styles.mapMarker,
+            <>
+              <div style={{
+                ...styles.mapMarkerPulse,
                 left: "50%",
                 top: "50%"
-              }}
-              title={`Lat: ${novoEquipamento.latitude}, Lng: ${novoEquipamento.longitude}`}
-            />
+              }} />
+              <div 
+                style={{
+                  ...styles.mapMarker,
+                  left: "50%",
+                  top: "50%"
+                }}
+                title={`Lat: ${novoEquipamento.latitude}, Lng: ${novoEquipamento.longitude}`}
+              />
+            </>
+          )}
+
+          {/* Mensagem quando não está no modo de seleção */}
+          {!showMap && !novoEquipamento.latitude && (
+            <div style={styles.mapOverlay}>
+              <div>
+                <div style={{fontSize: "3rem", marginBottom: "10px"}}>🗺️</div>
+                <div>Clique em "Adicionar Equipamento no Mapa" para começar</div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -968,234 +759,51 @@ export default function App() {
           <h4 style={{...styles.cardTitle, marginBottom: "15px", fontSize: "1.1rem"}}>
             📋 Equipamentos Cadastrados ({equipamentos.length})
           </h4>
-          {equipamentos.map((eqp, index) => (
-            <div key={index} style={styles.equipmentItem}>
-              <span>📡 {eqp}</span>
-              <button 
-                style={{
-                  ...styles.secondaryButton,
-                  padding: "6px 12px",
-                  fontSize: "0.8rem"
-                }}
-                onClick={() => setEquipamento(eqp)}
-              >
-                Selecionar
-              </button>
+          {equipamentos.length === 0 ? (
+            <div style={{textAlign: "center", padding: "20px", color: "#94a3b8"}}>
+              Nenhum equipamento cadastrado ainda
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 🎛️ PAINEL DE CONTROLE - DARK MODE */}
-      <div style={styles.card}>
-        <h3 style={styles.cardTitle}>⚙️ Configurações</h3>
-        
-        <div style={styles.formGrid}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>📡 Equipamento</label>
-            {loadingEquipamentos ? (
-              <div style={styles.loading}>
-                <div style={styles.spinner}></div>
-                <span>Carregando equipamentos...</span>
+          ) : (
+            equipamentos.map((eqp, index) => (
+              <div key={index} style={styles.equipmentItem}>
+                <span>📡 {eqp}</span>
+                <button 
+                  style={{
+                    ...styles.secondaryButton,
+                    padding: "6px 12px",
+                    fontSize: "0.8rem"
+                  }}
+                  onClick={() => setEquipamento(eqp)}
+                >
+                  Selecionar
+                </button>
               </div>
-            ) : (
-              <select
-                style={styles.select}
-                value={equipamento}
-                onChange={(e) => setEquipamento(e.target.value)}
-                onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
-                onBlur={(e) => e.target.style.borderColor = "#475569"}
-              >
-                <option value="">Selecione um equipamento</option>
-                {equipamentos.map((eqp) => (
-                  <option key={eqp} value={eqp}>
-                    {eqp}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>📅 Data Inicial</label>
-            <input
-              type="datetime-local"
-              style={styles.input}
-              value={dataInicial}
-              onChange={(e) => setDataInicial(e.target.value)}
-              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
-              onBlur={(e) => e.target.style.borderColor = "#475569"}
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>📅 Data Final</label>
-            <input
-              type="datetime-local"
-              style={styles.input}
-              value={dataFinal}
-              onChange={(e) => setDataFinal(e.target.value)}
-              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
-              onBlur={(e) => e.target.style.borderColor = "#475569"}
-            />
-          </div>
-        </div>
-
-        <div style={styles.buttonGroup}>
-          <button 
-            style={styles.primaryButton} 
-            onClick={() => carregar()}
-            onMouseOver={(e) => e.target.style.transform = "translateY(-2px)"}
-            onMouseOut={(e) => e.target.style.transform = "translateY(0)"}
-            disabled={!equipamento}
-          >
-            🔍 Aplicar Filtros
-          </button>
-          <button 
-            style={styles.secondaryButton} 
-            onClick={limparFiltro}
-            onMouseOver={(e) => e.target.style.backgroundColor = "#374151"}
-            onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
-          >
-            🗑️ Limpar Filtros
-          </button>
+            ))
+          )}
         </div>
       </div>
 
-      {/* ⏱️ FILTROS RÁPIDOS - DARK MODE */}
-      <div style={styles.card}>
-        <h3 style={styles.cardTitle}>⏱️ Período Rápido</h3>
-        <div style={styles.quickFilters}>
-          {["24h", "7d", "30d"].map((p) => (
-            <button
-              key={p}
-              style={{
-                ...styles.quickFilterButton,
-                ...(periodo === p ? styles.quickFilterActive : {})
-              }}
-              onClick={() => calcularPeriodoRapido(p)}
-              onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#374151")}
-              onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
-              disabled={!equipamento}
-            >
-              {p === "24h" && "⏰ Últimas 24h"}
-              {p === "7d" && "📅 Última Semana"}
-              {p === "30d" && "📊 Último Mês"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 📊 STATUS E ERROS - DARK MODE */}
-      <div>
-        {loading && periodo === "24h" && (
-          <div style={styles.loading}>
-            <div style={styles.spinner}></div>
-            <span>Carregando dados das últimas 24h...</span>
-          </div>
-        )}
-        
-        {loading && periodo !== "24h" && (
-          <div style={styles.loading}>
-            <div style={styles.spinner}></div>
-            <span>Carregando dados meteorológicos...</span>
-          </div>
-        )}
-        
-        {erro && (
-          <div style={styles.error}>
-            ⚠️ {erro}
-          </div>
-        )}
-
-        {!loading && !erro && agrupados.length === 0 && equipamento && (
-          <div style={styles.emptyState}>
-            <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📈</div>
-            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Nenhum dado encontrado</h3>
-            <p style={{ margin: 0 }}>Não há dados disponíveis para os filtros selecionados.</p>
-          </div>
-        )}
-
-        {!equipamento && !loadingEquipamentos && (
-          <div style={styles.emptyState}>
-            <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📡</div>
-            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Selecione um equipamento</h3>
-            <p style={{ margin: 0 }}>Escolha um equipamento da lista para visualizar os dados.</p>
-          </div>
-        )}
-      </div>
-
-      {/* 📈 GRÁFICOS COM ABAS - DARK MODE OTIMIZADO */}
-      {agrupados.length > 0 && (
-        <div style={styles.chartsSection}>
-          {/* ABAS DE NAVEGAÇÃO */}
-          <div style={styles.tabsContainer}>
-            {[
-              { id: "chuva", label: "🌧️ Chuva", emoji: "🌧️" },
-              { id: "temperatura", label: "🌡️ Temperatura", emoji: "🌡️" },
-              { id: "umidade", label: "💧 Umidade", emoji: "💧" }
-            ].map((tab) => (
-              <div
-                key={tab.id}
-                style={{
-                  ...styles.tab,
-                  ...(activeTab === tab.id ? styles.activeTab : {})
-                }}
-                onClick={() => setActiveTab(tab.id)}
-                onMouseOver={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "#374151")}
-                onMouseOut={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "transparent")}
-              >
-                {isMobile ? tab.emoji : tab.label}
-              </div>
-            ))}
-          </div>
-
-          {/* GRÁFICO ATIVO - LAYOUT OTIMIZADO */}
-          <div style={styles.chartCard}>
-            <div style={styles.chartHeader}>
-              <h3 style={styles.chartTitle}>
-                {activeTab === "chuva" && "🌧️ Precipitação por Hora (mm)"}
-                {activeTab === "temperatura" && "🌡️ Temperatura (°C)"}
-                {activeTab === "umidade" && "💧 Umidade Relativa (%)"}
-              </h3>
-            </div>
-            <div style={styles.chartContainer}>
-              {renderActiveChart()}
-            </div>
-          </div>
-
-          {/* 🗓️ INFORMAÇÕES DO PERÍODO - MODIFICADO */}
-          <div style={styles.summaryCard}>
-            <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
-            <div style={{ 
-              background: "linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1))", 
-              padding: "20px", 
-              borderRadius: "12px",
-              fontSize: isMobile ? "0.85rem" : "0.95rem",
-              border: "1px solid rgba(59, 130, 246, 0.2)",
-              color: "#cbd5e1"
-            }}>
-              {agrupados.length > 0 && (
-                <div style={{ 
-                  display: "grid", 
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
-                  gap: "15px" 
-                }}>
-                  <div><strong>📡 Equipamento:</strong> {equipamento}</div>
-                  <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
-                  <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
-                  <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ... (mantenha o resto do código igual) */}
 
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+          0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.7;
+          }
+          70% {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 0;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 0;
+          }
         }
         
         @media (max-width: 768px) {
