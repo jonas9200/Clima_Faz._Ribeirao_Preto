@@ -1,122 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import "chart.js/auto";
-
-// Importação dinâmica do React-Leaflet para evitar problemas de SSR
-const MapContainer = ({ children, ...props }) => {
-  const [MapComponent, setMapComponent] = useState(null);
-
-  useEffect(() => {
-    import('react-leaflet').then((mod) => {
-      setMapComponent(() => mod.MapContainer);
-    });
-  }, []);
-
-  if (!MapComponent) {
-    return (
-      <div style={{ 
-        height: '100%', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-        color: 'white',
-        fontSize: '1.1rem'
-      }}>
-        🗺️ Carregando mapa...
-      </div>
-    );
-  }
-
-  return <MapComponent {...props}>{children}</MapComponent>;
-};
-
-const TileLayer = ({ ...props }) => {
-  const [TileLayerComponent, setTileLayerComponent] = useState(null);
-
-  useEffect(() => {
-    import('react-leaflet').then((mod) => {
-      setTileLayerComponent(() => mod.TileLayer);
-    });
-  }, []);
-
-  if (!TileLayerComponent) return null;
-  return <TileLayerComponent {...props} />;
-};
-
-const Marker = ({ ...props }) => {
-  const [MarkerComponent, setMarkerComponent] = useState(null);
-
-  useEffect(() => {
-    import('react-leaflet').then((mod) => {
-      setMarkerComponent(() => mod.Marker);
-    });
-  }, []);
-
-  if (!MarkerComponent) return null;
-  return <MarkerComponent {...props} />;
-};
-
-const Popup = ({ ...props }) => {
-  const [PopupComponent, setPopupComponent] = useState(null);
-
-  useEffect(() => {
-    import('react-leaflet').then((mod) => {
-      setPopupComponent(() => mod.Popup);
-    });
-  }, []);
-
-  if (!PopupComponent) return null;
-  return <PopupComponent {...props} />;
-};
-
-const useMapEvents = ({ onClick, ...props }) => {
-  const [UseMapEventsComponent, setUseMapEventsComponent] = useState(null);
-
-  useEffect(() => {
-    import('react-leaflet').then((mod) => {
-      setUseMapEventsComponent(() => mod.useMapEvents);
-    });
-  }, []);
-
-  if (!UseMapEventsComponent) return null;
-  
-  const MapEvents = () => {
-    const map = UseMapEventsComponent({
-      click: onClick
-    });
-    return null;
-  };
-  
-  return <MapEvents />;
-};
-
-// Estilos do Leaflet (importação segura)
-const LeafletCSS = () => {
-  useEffect(() => {
-    // Carrega o CSS do Leaflet dinamicamente
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-    link.crossOrigin = '';
-    document.head.appendChild(link);
-
-    // Corrigir ícones do Leaflet
-    delete window.L.Icon.Default.prototype._getIconUrl;
-    window.L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    });
-
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
-
-  return null;
-};
 
 export default function App() {
   const [dados, setDados] = useState([]);
@@ -136,8 +20,12 @@ export default function App() {
   const [showMap, setShowMap] = useState(false);
   const [coordenadasSelecionadas, setCoordenadasSelecionadas] = useState(null);
   const [salvandoCoordenadas, setSalvandoCoordenadas] = useState(false);
+  const [mapType, setMapType] = useState("satellite");
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
+
+  // Referências
+  const mapContainerRef = useRef(null);
 
   // Detecta se é mobile (após montagem)
   useEffect(() => {
@@ -167,18 +55,19 @@ export default function App() {
   const handleMapClick = (e) => {
     if (!showMap || !equipamento) return;
     
-    const { lat, lng } = e.latlng;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Calcula coordenadas baseadas na posição do clique (simulação realista)
+    const lat = (-14.2350 + ((y / rect.height) - 0.5) * 0.2).toFixed(6);
+    const lng = (-51.9253 + ((x / rect.width) - 0.5) * 0.2).toFixed(6);
+    
     setCoordenadasSelecionadas({
-      lat: lat,
-      lng: lng
+      lat: parseFloat(lat),
+      lng: parseFloat(lng)
     });
   };
-
-  // Componente para capturar eventos do mapa
-  function MapEvents({ onClick }) {
-    useMapEvents({ onClick });
-    return null;
-  }
 
   async function carregarEquipamentos() {
     setLoadingEquipamentos(true);
@@ -830,7 +719,7 @@ export default function App() {
       backdropFilter: "blur(10px)",
       border: "1px solid rgba(100, 116, 139, 0.2)"
     },
-    // 🗺️ Estilos para o mapa Leaflet
+    // 🗺️ Estilos para o mapa customizado
     mapCard: {
       background: "rgba(30, 41, 59, 0.8)",
       borderRadius: "15px",
@@ -848,6 +737,22 @@ export default function App() {
       overflow: "hidden",
       border: "2px solid #475569",
       marginBottom: "20px",
+      background: mapType === "satellite" 
+        ? "linear-gradient(135deg, #0f766e 0%, #134e4a 50%, #1e3a8a 100%)" 
+        : "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 20%, #60a5fa 40%, #93c5fd 60%, #bfdbfe 80%, #dbeafe 100%)",
+      cursor: showMap ? "crosshair" : "default",
+    },
+    mapGrid: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      backgroundImage: mapType === "satellite" 
+        ? "none"
+        : `linear-gradient(rgba(30, 41, 59, 0.3) 1px, transparent 1px),
+           linear-gradient(90deg, rgba(30, 41, 59, 0.3) 1px, transparent 1px)`,
+      backgroundSize: "50px 50px",
     },
     mapOverlay: {
       position: "absolute",
@@ -863,8 +768,30 @@ export default function App() {
       fontWeight: "500",
       textAlign: "center",
       padding: "20px",
-      background: "rgba(30, 41, 59, 0.9)",
+      background: showMap ? "rgba(30, 41, 59, 0.7)" : "rgba(30, 41, 59, 0.9)",
+      transition: "all 0.3s ease",
       zIndex: 1000,
+    },
+    mapMarker: {
+      position: "absolute",
+      width: "24px",
+      height: "24px",
+      background: "#ef4444",
+      border: "3px solid white",
+      borderRadius: "50%",
+      transform: "translate(-50%, -50%)",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+      cursor: "pointer",
+      zIndex: 10,
+    },
+    mapMarkerPulse: {
+      position: "absolute",
+      width: "40px",
+      height: "40px",
+      background: "rgba(239, 68, 68, 0.4)",
+      borderRadius: "50%",
+      transform: "translate(-50%, -50%)",
+      animation: "pulse 1.5s infinite",
     },
     mapControls: {
       display: "flex",
@@ -898,6 +825,26 @@ export default function App() {
       fontSize: "0.9rem",
       color: "#cbd5e1",
     },
+    mapFeatures: {
+      position: "absolute",
+      width: "100%",
+      height: "100%",
+    },
+    mapFeature: {
+      position: "absolute",
+      background: "rgba(34, 197, 94, 0.3)",
+      border: "2px solid #22c55e",
+      borderRadius: "8px",
+      padding: "5px 10px",
+      fontSize: "0.8rem",
+      color: "white",
+      fontWeight: "bold",
+    },
+    river: {
+      position: "absolute",
+      background: "rgba(59, 130, 246, 0.5)",
+      borderRadius: "20px",
+    }
   };
 
   // Função para renderizar o gráfico ativo
@@ -971,8 +918,6 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      <LeafletCSS />
-      
       {/* 🎯 HEADER */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
@@ -1003,7 +948,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🗺️ CARD DO MAPA LEAFLET */}
+      {/* 🗺️ CARD DO MAPA CUSTOMIZADO */}
       <div style={styles.mapCard}>
         <h3 style={styles.cardTitle}>🗺️ Mapa de Equipamentos</h3>
         
@@ -1018,6 +963,18 @@ export default function App() {
           >
             {showMap ? "❌ Fechar Mapa" : "🗺️ Abrir Mapa Interativo"}
           </button>
+          
+          {showMap && (
+            <button 
+              style={{
+                ...styles.secondaryButton,
+                background: mapType === "satellite" ? "linear-gradient(135deg, #0f766e, #14b8a6)" : "transparent"
+              }}
+              onClick={() => setMapType(mapType === "satellite" ? "normal" : "satellite")}
+            >
+              {mapType === "satellite" ? "🗺️ Mapa Normal" : "🛰️ Mapa Satélite"}
+            </button>
+          )}
           
           {showMap && coordenadasSelecionadas && (
             <button 
@@ -1055,57 +1012,94 @@ export default function App() {
           </div>
         )}
 
-        {/* MAPA LEAFLET */}
-        <div style={styles.mapContainer}>
-          {showMap ? (
-            <MapContainer
-              center={coordenadasSelecionadas || [-14.2350, -51.9253]}
-              zoom={coordenadasSelecionadas ? 15 : 13}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              
-              <MapEvents onClick={handleMapClick} />
-              
-              {/* Marcador da localização selecionada */}
-              {coordenadasSelecionadas && (
-                <Marker position={[coordenadasSelecionadas.lat, coordenadasSelecionadas.lng]}>
-                  <Popup>
-                    📍 Localização Selecionada<br />
-                    Lat: {coordenadasSelecionadas.lat.toFixed(6)}<br />
-                    Lng: {coordenadasSelecionadas.lng.toFixed(6)}
-                  </Popup>
-                </Marker>
-              )}
-              
-              {/* Marcadores dos equipamentos existentes */}
-              {equipamentos.map((eqp, index) => {
-                if (eqp.latitude && eqp.longitude) {
-                  return (
-                    <Marker 
-                      key={index}
-                      position={[parseFloat(eqp.latitude), parseFloat(eqp.longitude)]}
-                    >
-                      <Popup>
-                        📡 {eqp.nome || eqp}<br />
-                        Lat: {eqp.latitude}<br />
-                        Lng: {eqp.longitude}
-                      </Popup>
-                    </Marker>
-                  );
+        {/* MAPA CUSTOMIZADO */}
+        <div 
+          ref={mapContainerRef}
+          style={styles.mapContainer}
+          onClick={handleMapClick}
+        >
+          {/* Grade do mapa (apenas no modo normal) */}
+          <div style={styles.mapGrid} />
+          
+          {/* Elementos do mapa */}
+          <div style={styles.mapFeatures}>
+            {/* Rio */}
+            <div style={{
+              ...styles.river,
+              top: '30%',
+              left: '10%',
+              width: '80%',
+              height: '40px',
+              transform: 'rotate(-5deg)'
+            }} />
+            
+            {/* Áreas da fazenda */}
+            <div style={{
+              ...styles.mapFeature,
+              top: '20%',
+              left: '20%',
+              background: mapType === "satellite" ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.4)'
+            }}>🌾 Plantação</div>
+            
+            <div style={{
+              ...styles.mapFeature,
+              top: '60%',
+              left: '60%',
+              background: mapType === "satellite" ? 'rgba(234, 179, 8, 0.5)' : 'rgba(234, 179, 8, 0.4)'
+            }}>🏠 Sede</div>
+            
+            <div style={{
+              ...styles.mapFeature,
+              top: '40%',
+              left: '40%',
+              background: mapType === "satellite" ? 'rgba(168, 85, 247, 0.5)' : 'rgba(168, 85, 247, 0.4)'
+            }}>📡 Estação</div>
+          </div>
+
+          {/* Marcador no mapa */}
+          {(coordenadasSelecionadas || (equipamentoAtual && equipamentoAtual.latitude)) && (
+            <>
+              <div style={{
+                ...styles.mapMarkerPulse,
+                left: "50%",
+                top: "50%"
+              }} />
+              <div 
+                style={{
+                  ...styles.mapMarker,
+                  left: "50%",
+                  top: "50%"
+                }}
+                title={coordenadasSelecionadas 
+                  ? `Lat: ${coordenadasSelecionadas.lat.toFixed(6)}, Lng: ${coordenadasSelecionadas.lng.toFixed(6)}`
+                  : `Lat: ${equipamentoAtual?.latitude}, Lng: ${equipamentoAtual?.longitude}`
                 }
-                return null;
-              })}
-            </MapContainer>
-          ) : (
+              />
+            </>
+          )}
+
+          {/* Overlay com instruções */}
+          {showMap && (
+            <div style={styles.mapOverlay}>
+              <div>
+                <div style={{fontSize: "3rem", marginBottom: "10px"}}>📍</div>
+                <div style={{fontSize: isMobile ? "1.1rem" : "1.3rem", marginBottom: "10px"}}>
+                  Clique no mapa para selecionar a localização
+                </div>
+                <div style={{fontSize: "0.9rem", opacity: 0.8}}>
+                  As coordenadas serão automaticamente capturadas
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mensagem quando não está no modo de seleção */}
+          {!showMap && (
             <div style={styles.mapOverlay}>
               <div>
                 <div style={{fontSize: "3rem", marginBottom: "10px"}}>🗺️</div>
                 <div style={{fontSize: isMobile ? "1.1rem" : "1.3rem"}}>
-                  Mapa Interativo Leaflet
+                  Mapa da Fazenda Ribeirão Preto
                 </div>
                 <div style={{fontSize: "0.9rem", opacity: 0.8, marginTop: "10px"}}>
                   {equipamento 
@@ -1394,6 +1388,21 @@ export default function App() {
           100% { transform: rotate(360deg); }
         }
         
+        @keyframes pulse {
+          0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.7;
+          }
+          70% {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 0;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 0;
+          }
+        }
+        
         @media (max-width: 768px) {
           input[type="datetime-local"] {
             font-size: 16px;
@@ -1416,33 +1425,6 @@ export default function App() {
           background: #0f172a;
           margin: 0;
           padding: 0;
-        }
-
-        /* Estilos do Leaflet */
-        .leaflet-container {
-          background: #1e293b;
-          font-family: 'Inter', sans-serif;
-        }
-
-        .leaflet-popup-content-wrapper {
-          background: rgba(30, 41, 59, 0.95);
-          color: #e2e8f0;
-          border-radius: 8px;
-          backdrop-filter: blur(10px);
-        }
-
-        .leaflet-popup-tip {
-          background: rgba(30, 41, 59, 0.95);
-        }
-
-        .leaflet-control-zoom a {
-          background: rgba(30, 41, 59, 0.9) !important;
-          color: #e2e8f0 !important;
-          border: 1px solid #475569 !important;
-        }
-
-        .leaflet-control-zoom a:hover {
-          background: rgba(59, 130, 246, 0.8) !important;
         }
       `}</style>
     </div>
