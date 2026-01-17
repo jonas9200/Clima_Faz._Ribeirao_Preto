@@ -22,26 +22,20 @@ const calcularDeltaT = (temp, umid) => {
   return parseFloat(resultado.toFixed(2));
 };
 
-// Função para formatar data e hora do registro (corrigido para horário de Brasília)
+// Função para formatar data e hora do registro (usando horário do banco diretamente)
 const formatarDataHora = (registro) => {
-  const data = new Date(registro);
-  // Converter para horário de Brasília (UTC-3)
-  const dataLocal = new Date(data.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  const dia = dataLocal.getDate().toString().padStart(2, '0');
-  const mes = (dataLocal.getMonth() + 1).toString().padStart(2, '0');
-  const hora = dataLocal.getHours().toString().padStart(2, '0');
-  const min = dataLocal.getMinutes().toString().padStart(2, '0');
-  return `${dia}/${mes} ${hora}:${min}`;
+  // O banco já está em horário de Brasília, então usamos substring direto
+  const dataStr = registro.replace('T', ' ').substring(0, 16); // "2026-01-17 16:09"
+  const [data, hora] = dataStr.split(' ');
+  const [ano, mes, dia] = data.split('-');
+  return `${dia}/${mes} ${hora}`;
 };
 
-// Função para formatar apenas a hora (corrigido para horário de Brasília)
+// Função para formatar apenas a hora (usando horário do banco diretamente)
 const formatarHora = (registro) => {
-  const data = new Date(registro);
-  // Converter para horário de Brasília (UTC-3)
-  const dataLocal = new Date(data.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  const hora = dataLocal.getHours().toString().padStart(2, '0');
-  const min = dataLocal.getMinutes().toString().padStart(2, '0');
-  return `${hora}:${min}`;
+  // Extrai apenas HH:MM do timestamp do banco
+  const hora = registro.substring(11, 16); // Pega "16:09" de "2026-01-17 16:09:34.129"
+  return hora;
 };
 
 function App() {
