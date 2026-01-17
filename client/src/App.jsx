@@ -14,7 +14,6 @@ export default function App() {
   const [periodo, setPeriodo] = useState("24h");
   const [totalChuva, setTotalChuva] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [favorito, setFavorito] = useState(false);
 
   const baseUrl = import.meta.env.VITE_API_URL || "";
 
@@ -44,6 +43,7 @@ export default function App() {
       const listaEquipamentos = json.equipamentos || [];
       setEquipamentos(listaEquipamentos);
       
+      // ✅ SEMPRE define o primeiro equipamento quando a lista estiver pronta
       if (listaEquipamentos.length > 0) {
         setEquipamento(listaEquipamentos[0]);
       }
@@ -57,16 +57,18 @@ export default function App() {
     }
   }
 
-  // Aplicar filtro automático
+  // 🔄 NOVO: Aplicar filtro das 24h automaticamente quando equipamento estiver disponível
   useEffect(() => {
     if (equipamento && equipamento !== "") {
+      console.log("🎯 Aplicando filtro automático das 24h para:", equipamento);
+      // Pequeno delay para garantir que tudo está carregado
       setTimeout(() => {
         calcularPeriodoRapido("24h");
       }, 100);
     }
   }, [equipamento]);
 
-  // Funções de conversão de data
+  // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
   function toLocalDatetimeString(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -77,6 +79,7 @@ export default function App() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
+  // Função para converter input para formato do banco (YYYY-MM-DD HH:MM:SS)
   function toDatabaseFormat(datetimeString) {
     if (!datetimeString) return '';
     const date = new Date(datetimeString);
@@ -110,9 +113,11 @@ export default function App() {
     const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
     const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
 
+    console.log(`📊 Aplicando filtro ${p}:`, { inicioBanco, finalBanco });
     carregarComDatas(inicioBanco, finalBanco);
   }
 
+  // 🔄 Carregar da API com datas específicas
   async function carregarComDatas(inicial, final) {
     setLoading(true);
     setErro("");
@@ -122,6 +127,7 @@ export default function App() {
       if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
@@ -138,6 +144,7 @@ export default function App() {
     }
   }
 
+  // 🔄 Carregar da API usando os estados atuais
   async function carregar() {
     setLoading(true);
     setErro("");
@@ -151,6 +158,7 @@ export default function App() {
       if (dataFinalBanco) params.append("data_final", dataFinalBanco);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
@@ -170,19 +178,25 @@ export default function App() {
     setDataInicial("");
     setDataFinal("");
     setPeriodo("");
+    // Ao limpar, volta para as 24h
     setTimeout(() => {
       calcularPeriodoRapido("24h");
     }, 100);
   }
 
-  // Processar dados
+  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
   function agruparPorHora(lista) {
     const mapa = {};
+
     lista.forEach((d) => {
       const registro = d.registro;
-      let horaStr = registro.includes('T') 
-        ? registro.slice(0, 13) + ":00:00"
-        : registro.slice(0, 13) + ":00:00";
+      
+      let horaStr;
+      if (registro.includes('T')) {
+        horaStr = registro.slice(0, 13) + ":00:00";
+      } else {
+        horaStr = registro.slice(0, 13) + ":00:00";
+      }
 
       if (!mapa[horaStr]) {
         mapa[horaStr] = {
@@ -215,672 +229,531 @@ export default function App() {
 
   const agrupados = agruparPorHora(dados);
   
-  // Dados para exibição
-  const ultimaComunicacao = agrupados.length > 0 
-    ? new Date(agrupados[agrupados.length - 1].hora).toLocaleTimeString('pt-BR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
-    : "20:00";
+  // Formatar labels para eixo X como na imagem
+  const formatarLabelsX = () => {
+    if (agrupados.length === 0) return [];
     
-  const tempAtual = agrupados.length > 0 ? agrupados[agrupados.length - 1].temperatura : 23.1;
-  const umidadeAtual = agrupados.length > 0 ? agrupados[agrupados.length - 1].umidade : 98.3;
-  const chuvaPeriodo = totalChuva;
-
-  // Calcular máximo
-  const tempMax = agrupados.length > 0 
-    ? Math.max(...agrupados.map(d => d.temperatura))
-    : 28.8;
-    
-  const umidadeMax = agrupados.length > 0 
-    ? Math.max(...agrupados.map(d => d.umidade))
-    : 73.8;
-    
-  const horaTempMax = agrupados.length > 0 
-    ? new Date(agrupados.find(d => d.temperatura === tempMax).hora).toLocaleTimeString('pt-BR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
-    : "17:00";
-
-  // Dados para o gráfico
-  const labels = agrupados.length > 0 
-    ? agrupados.map(d => 
-        new Date(d.hora).toLocaleTimeString('pt-BR', { 
+    // Se tiver poucos dados, mostra todos
+    if (agrupados.length <= 9) {
+      return agrupados.map((d) => {
+        const date = new Date(d.hora);
+        return date.toLocaleTimeString('pt-BR', { 
           hour: '2-digit', 
-          minute: '2-digit' 
-        }).replace(':', 'h')
-      )
-    : ["00h00", "02h00", "04h00", "06h00", "08h00", "10h00", "12h00", "14h00", "16h00", "18h00", "20h00", "22h00"];
-
-  const chuvaData = agrupados.length > 0 
-    ? agrupados.map(d => d.chuva)
-    : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-  const tempData = agrupados.length > 0 
-    ? agrupados.map(d => d.temperatura)
-    : [22, 21, 20, 19, 20, 23, 25, 28, 28.8, 27, 25, 23];
-
-  // Estilos baseados na imagem
-  const styles = {
-    container: {
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
-      padding: isMobile ? "15px" : "30px",
-      fontFamily: "'Arial', sans-serif",
-      color: "#333"
-    },
-    header: {
-      textAlign: "center",
-      marginBottom: "40px",
-      padding: "0 20px"
-    },
-    mainTitle: {
-      fontSize: isMobile ? "28px" : "36px",
-      fontWeight: "600",
-      color: "#2c3e50",
-      margin: "0 0 8px 0",
-      letterSpacing: "-0.5px"
-    },
-    subtitle: {
-      fontSize: isMobile ? "16px" : "20px",
-      color: "#7f8c8d",
-      margin: "0 0 30px 0",
-      fontWeight: "400"
-    },
-    layoutContainer: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "350px 1fr",
-      gap: "30px",
-      maxWidth: "1400px",
-      margin: "0 auto"
-    },
-    // Coluna esquerda - Estatísticas
-    leftColumn: {
-      background: "#ffffff",
-      borderRadius: "15px",
-      padding: "25px",
-      boxShadow: "0 5px 20px rgba(0, 0, 0, 0.08)",
-      border: "1px solid #eaeaea"
-    },
-    statsGrid: {
-      display: "grid",
-      gridTemplateColumns: "repeat(2, 1fr)",
-      gap: "20px",
-      marginBottom: "30px"
-    },
-    statCard: {
-      background: "#f8f9fa",
-      borderRadius: "12px",
-      padding: "20px",
-      textAlign: "center",
-      border: "1px solid #eaeaea",
-      transition: "all 0.3s ease"
-    },
-    statTitle: {
-      fontSize: "13px",
-      color: "#7f8c8d",
-      fontWeight: "600",
-      marginBottom: "10px",
-      textTransform: "uppercase",
-      letterSpacing: "0.5px"
-    },
-    statValue: {
-      fontSize: isMobile ? "22px" : "28px",
-      fontWeight: "700",
-      color: "#2c3e50"
-    },
-    periodFilters: {
-      display: "flex",
-      gap: "10px",
-      marginBottom: "25px",
-      flexWrap: "wrap"
-    },
-    periodFilter: {
-      flex: "1",
-      padding: "12px 15px",
-      background: "#f8f9fa",
-      border: "1px solid #e0e0e0",
-      borderRadius: "8px",
-      fontSize: "14px",
-      fontWeight: "500",
-      color: "#555",
-      cursor: "pointer",
-      textAlign: "center",
-      transition: "all 0.2s ease"
-    },
-    periodFilterActive: {
-      background: "#3498db",
-      color: "white",
-      borderColor: "#3498db"
-    },
-    actionButtons: {
-      display: "flex",
-      gap: "10px",
-      marginBottom: "30px"
-    },
-    favoriteButton: {
-      flex: "1",
-      padding: "12px 15px",
-      background: favorito ? "#f39c12" : "#f8f9fa",
-      border: "1px solid #e0e0e0",
-      borderRadius: "8px",
-      fontSize: "14px",
-      fontWeight: "500",
-      color: favorito ? "white" : "#555",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "8px",
-      transition: "all 0.2s ease"
-    },
-    popupButton: {
-      width: "50px",
-      padding: "12px",
-      background: "#f8f9fa",
-      border: "1px solid #e0e0e0",
-      borderRadius: "8px",
-      fontSize: "18px",
-      fontWeight: "500",
-      color: "#555",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      transition: "all 0.2s ease"
-    },
-    // Coluna direita - Gráfico e métricas
-    rightColumn: {
-      display: "flex",
-      flexDirection: "column",
-      gap: "25px"
-    },
-    chartSection: {
-      background: "#ffffff",
-      borderRadius: "15px",
-      padding: "25px",
-      boxShadow: "0 5px 20px rgba(0, 0, 0, 0.08)",
-      border: "1px solid #eaeaea"
-    },
-    sectionTitle: {
-      fontSize: "20px",
-      fontWeight: "600",
-      color: "#2c3e50",
-      margin: "0 0 20px 0"
-    },
-    chartHeader: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: "20px"
-    },
-    metricsLegend: {
-      display: "flex",
-      gap: "25px"
-    },
-    metricItem: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center"
-    },
-    metricLabel: {
-      fontSize: "14px",
-      color: "#7f8c8d",
-      marginBottom: "5px",
-      fontWeight: "500"
-    },
-    metricValue: {
-      fontSize: "18px",
-      fontWeight: "700",
-      color: "#2c3e50"
-    },
-    chartContainer: {
-      height: "300px",
-      position: "relative",
-      marginBottom: "30px"
-    },
-    maxTimeInfo: {
-      background: "#f8f9fa",
-      borderRadius: "10px",
-      padding: "20px",
-      textAlign: "center",
-      border: "1px solid #eaeaea"
-    },
-    maxTimeTitle: {
-      fontSize: "16px",
-      fontWeight: "600",
-      color: "#2c3e50",
-      marginBottom: "15px"
-    },
-    maxTimeStats: {
-      display: "grid",
-      gridTemplateColumns: "repeat(3, 1fr)",
-      gap: "15px"
-    },
-    maxTimeStat: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center"
-    },
-    maxTimeValue: {
-      fontSize: "18px",
-      fontWeight: "700",
-      color: "#3498db"
-    },
-    humiditySection: {
-      background: "#ffffff",
-      borderRadius: "15px",
-      padding: "25px",
-      boxShadow: "0 5px 20px rgba(0, 0, 0, 0.08)",
-      border: "1px solid #eaeaea"
-    },
-    humidityHeader: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: "20px"
-    },
-    humidityScale: {
-      display: "flex",
-      justifyContent: "space-between",
-      marginBottom: "15px",
-      padding: "0 10px"
-    },
-    humidityValue: {
-      fontSize: "14px",
-      color: "#7f8c8d",
-      fontWeight: "500"
-    },
-    humidityBar: {
-      height: "30px",
-      background: "linear-gradient(90deg, #3498db 0%, #2ecc71 100%)",
-      borderRadius: "15px",
-      marginBottom: "20px",
-      position: "relative"
-    },
-    humidityIndicator: {
-      position: "absolute",
-      top: "-10px",
-      width: "4px",
-      height: "50px",
-      background: "#e74c3c",
-      transform: "translateX(-50%)",
-      left: `${umidadeAtual}%`
-    },
-    dayLabels: {
-      display: "flex",
-      justifyContent: "space-between",
-      padding: "0 10px"
-    },
-    dayLabel: {
-      fontSize: "14px",
-      color: "#7f8c8d",
-      fontWeight: "500"
-    },
-    // Controles
-    controlsCard: {
-      background: "#ffffff",
-      borderRadius: "15px",
-      padding: "25px",
-      marginTop: "25px",
-      boxShadow: "0 5px 20px rgba(0, 0, 0, 0.08)",
-      border: "1px solid #eaeaea"
-    },
-    formGrid: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
-      gap: "15px",
-      marginBottom: "20px"
-    },
-    formGroup: {
-      display: "flex",
-      flexDirection: "column"
-    },
-    label: {
-      marginBottom: "8px",
-      fontWeight: "500",
-      color: "#555",
-      fontSize: "14px"
-    },
-    input: {
-      padding: "12px",
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      fontSize: "14px",
-      backgroundColor: "white",
-      color: "#333",
-      transition: "all 0.2s ease"
-    },
-    select: {
-      padding: "12px",
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      fontSize: "14px",
-      backgroundColor: "white",
-      color: "#333",
-      cursor: "pointer",
-      transition: "all 0.2s ease"
-    },
-    buttonGroup: {
-      display: "flex",
-      gap: "12px"
-    },
-    primaryButton: {
-      padding: "12px 24px",
-      background: "#3498db",
-      color: "white",
-      border: "none",
-      borderRadius: "8px",
-      fontSize: "14px",
-      fontWeight: "600",
-      cursor: "pointer",
-      flex: 1,
-      transition: "all 0.2s ease"
-    },
-    secondaryButton: {
-      padding: "12px 24px",
-      background: "transparent",
-      color: "#7f8c8d",
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      fontSize: "14px",
-      fontWeight: "600",
-      cursor: "pointer",
-      flex: 1,
-      transition: "all 0.2s ease"
-    },
-    // Estados
-    loading: {
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-      padding: "20px",
-      background: "white",
-      borderRadius: "10px",
-      color: "#7f8c8d",
-      justifyContent: "center",
-      fontSize: "14px",
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-      border: "1px solid #eaeaea"
-    },
-    spinner: {
-      width: "20px",
-      height: "20px",
-      border: "2px solid #eaeaea",
-      borderTop: "2px solid #3498db",
-      borderRadius: "50%",
-      animation: "spin 1s linear infinite"
-    },
-    error: {
-      padding: "16px",
-      background: "rgba(231, 76, 60, 0.05)",
-      border: "1px solid #e74c3c",
-      borderRadius: "10px",
-      color: "#e74c3c",
-      textAlign: "center",
-      fontSize: "14px"
+          minute: '2-digit'
+        });
+      });
     }
+    
+    // Senão, mostra pontos espaçados como na imagem
+    const labels = [];
+    const step = Math.max(1, Math.floor(agrupados.length / 9));
+    
+    for (let i = 0; i < agrupados.length; i += step) {
+      const date = new Date(agrupados[i].hora);
+      labels.push(date.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      }));
+      if (labels.length >= 9) break;
+    }
+    
+    return labels;
   };
 
-  // Configurações do gráfico
+  const labelsX = formatarLabelsX();
+  const temperatura = agrupados.map((d) => d.temperatura);
+  const umidade = agrupados.map((d) => d.umidade);
+  const chuva = agrupados.map((d) => d.chuva);
+
+  // Configuração do gráfico combinado com eixo Y duplo
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
-        display: false
+        display: true,
+        position: 'top',
+        labels: {
+          color: '#e2e8f0',
+          font: {
+            size: isMobile ? 11 : 13,
+            family: "'Inter', sans-serif"
+          },
+          padding: 20,
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
       },
       tooltip: {
         mode: 'index',
         intersect: false,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        titleColor: '#333',
-        bodyColor: '#333',
-        borderColor: '#ddd',
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#e2e8f0',
+        bodyColor: '#e2e8f0',
+        borderColor: 'rgba(59, 130, 246, 0.3)',
         borderWidth: 1,
         titleFont: {
-          size: 12
+          size: isMobile ? 12 : 14,
+          family: "'Inter', sans-serif"
         },
         bodyFont: {
-          size: 11
+          size: isMobile ? 11 : 13,
+          family: "'Inter', sans-serif"
+        },
+        padding: 12,
+        callbacks: {
+          title: (context) => {
+            const index = context[0].dataIndex;
+            const dataOriginal = agrupados[index];
+            return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
         }
       }
     },
     scales: {
       x: {
         grid: {
-          display: false
+          color: 'rgba(148, 163, 184, 0.1)',
+          drawBorder: false
         },
         ticks: {
-          color: '#7f8c8d',
+          color: '#94a3b8',
           font: {
-            size: 11
+            size: isMobile ? 10 : 12,
+            family: "'Inter', sans-serif"
           },
-          maxTicksLimit: 12
+          maxTicksLimit: 9
         }
       },
       y: {
-        beginAtZero: true,
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Chuva (mm) / Umidade (%)',
+          color: '#94a3b8',
+          font: {
+            size: isMobile ? 11 : 13,
+            family: "'Inter', sans-serif"
+          }
+        },
+        min: 0,
+        max: 100,
         grid: {
-          color: 'rgba(0, 0, 0, 0.05)'
+          color: 'rgba(148, 163, 184, 0.1)',
+          drawBorder: false
         },
         ticks: {
-          color: '#7f8c8d',
+          color: '#94a3b8',
           font: {
-            size: 11
+            size: isMobile ? 10 : 12,
+            family: "'Inter', sans-serif"
           },
+          stepSize: 25,
+          callback: function(value) {
+            return value;
+          }
+        }
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: {
+          display: true,
+          text: 'Temperatura (°C)',
+          color: '#f87171',
+          font: {
+            size: isMobile ? 11 : 13,
+            family: "'Inter', sans-serif"
+          }
+        },
+        min: 0,
+        max: Math.max(...temperatura.length > 0 ? temperatura : [0]) + 2,
+        grid: {
+          drawOnChartArea: false,
+        },
+        ticks: {
+          color: '#f87171',
+          font: {
+            size: isMobile ? 10 : 12,
+            family: "'Inter', sans-serif"
+          },
+          stepSize: 2,
           callback: function(value) {
             return value;
           }
         }
       }
-    },
-    interaction: {
-      mode: 'index',
-      intersect: false
     }
   };
 
-  // Dados do gráfico
-  const chartData = {
-    labels: labels,
+  // Dados para o gráfico combinado
+  const combinedChartData = {
+    labels: labelsX,
     datasets: [
       {
-        label: 'Chuvas (mm)',
-        data: chuvaData,
+        label: "Chuva (mm)",
+        data: chuva,
         type: 'bar',
-        backgroundColor: 'rgba(52, 152, 219, 0.7)',
-        borderColor: 'rgba(52, 152, 219, 1)',
+        backgroundColor: "rgba(59, 130, 246, 0.7)",
+        borderColor: "#3b82f6",
         borderWidth: 1,
         borderRadius: 4,
-        order: 2
+        yAxisID: 'y',
       },
       {
-        label: 'Temp (°C)',
-        data: tempData,
+        label: "Umidade (%)",
+        data: umidade,
         type: 'line',
-        borderColor: 'rgba(231, 76, 60, 1)',
-        backgroundColor: 'rgba(231, 76, 60, 0.1)',
-        borderWidth: 2,
-        tension: 0.3,
-        fill: false,
-        order: 1
+        borderColor: "#60a5fa",
+        backgroundColor: "rgba(96, 165, 250, 0.1)",
+        borderWidth: 3,
+        tension: 0.4,
+        fill: true,
+        yAxisID: 'y',
+      },
+      {
+        label: "Temperatura (°C)",
+        data: temperatura,
+        type: 'line',
+        borderColor: "#f87171",
+        backgroundColor: "transparent",
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: "#f87171",
+        yAxisID: 'y1',
       }
     ]
   };
 
+  // Estatísticas atuais (última leitura)
+  const ultimaLeitura = agrupados.length > 0 ? agrupados[agrupados.length - 1] : null;
+  const ultimaComunicacao = ultimaLeitura 
+    ? new Date(ultimaLeitura.hora).toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      })
+    : '--:--';
+
+  // Estilos DARK MODE com layout profissional
+  const styles = {
+    container: {
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+      padding: isMobile ? "15px" : "30px",
+      fontFamily: "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      color: "#e2e8f0"
+    },
+    // Header estilo profissional
+    header: {
+      marginBottom: isMobile ? "25px" : "35px",
+      textAlign: "center"
+    },
+    mainTitle: {
+      fontSize: isMobile ? "1.8rem" : "2.5rem",
+      fontWeight: "700",
+      background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+      margin: "0 0 8px 0",
+      letterSpacing: "-0.5px"
+    },
+    subtitle: {
+      fontSize: isMobile ? "1rem" : "1.2rem",
+      color: "#94a3b8",
+      fontWeight: "400",
+      margin: "0 0 5px 0",
+      opacity: 0.9
+    },
+    location: {
+      fontSize: isMobile ? "0.9rem" : "1rem",
+      color: "#60a5fa",
+      fontWeight: "500",
+      margin: "0",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "8px"
+    },
+    // Cartões de status (botões da imagem)
+    statusCards: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+      gap: "15px",
+      marginBottom: isMobile ? "25px" : "30px"
+    },
+    statusCard: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "12px",
+      padding: isMobile ? "20px" : "25px",
+      textAlign: "center",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)",
+      transition: "all 0.3s ease",
+      cursor: "pointer",
+    },
+    statusTitle: {
+      fontSize: isMobile ? "0.8rem" : "0.9rem",
+      color: "#94a3b8",
+      fontWeight: "500",
+      margin: "0 0 10px 0",
+      textTransform: "uppercase",
+      letterSpacing: "0.5px"
+    },
+    statusValue: {
+      fontSize: isMobile ? "1.4rem" : "1.8rem",
+      fontWeight: "700",
+      color: "#e2e8f0",
+      margin: "0"
+    },
+    statusTime: {
+      fontSize: isMobile ? "0.7rem" : "0.8rem",
+      color: "#60a5fa",
+      fontWeight: "500",
+      margin: "5px 0 0 0"
+    },
+    // Controles de filtro
+    controlsCard: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "12px",
+      padding: isMobile ? "20px" : "25px",
+      marginBottom: isMobile ? "25px" : "30px",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    controlsTitle: {
+      fontSize: isMobile ? "1.1rem" : "1.2rem",
+      fontWeight: "600",
+      color: "#e2e8f0",
+      margin: "0 0 20px 0",
+      display: "flex",
+      alignItems: "center",
+      gap: "10px"
+    },
+    formGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+      gap: "15px",
+      marginBottom: "20px",
+    },
+    formGroup: {
+      display: "flex",
+      flexDirection: "column",
+    },
+    label: {
+      marginBottom: "8px",
+      fontWeight: "500",
+      color: "#cbd5e1",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+    },
+    input: {
+      padding: "12px",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      backgroundColor: "#1e293b",
+      color: "#e2e8f0",
+      transition: "all 0.3s ease",
+    },
+    select: {
+      padding: "12px",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      backgroundColor: "#1e293b",
+      color: "#e2e8f0",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+    },
+    buttonGroup: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: "12px",
+    },
+    primaryButton: {
+      padding: "12px 24px",
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      color: "white",
+      border: "none",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
+    },
+    secondaryButton: {
+      padding: "12px 24px",
+      background: "transparent",
+      color: "#94a3b8",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+    },
+    // Gráfico principal
+    chartContainer: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "12px",
+      padding: isMobile ? "20px" : "25px",
+      marginBottom: isMobile ? "25px" : "30px",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)",
+      height: isMobile ? "450px" : "500px",
+    },
+    chartTitle: {
+      fontSize: isMobile ? "1.1rem" : "1.2rem",
+      fontWeight: "600",
+      color: "#e2e8f0",
+      margin: "0 0 15px 0",
+      display: "flex",
+      alignItems: "center",
+      gap: "10px"
+    },
+    chartInnerContainer: {
+      height: isMobile ? "380px" : "420px",
+      position: "relative",
+    },
+    // Filtros rápidos
+    quickFilters: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: "12px",
+      flexWrap: "wrap",
+      marginBottom: "20px",
+    },
+    quickFilterButton: {
+      padding: "12px 18px",
+      background: "transparent",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      cursor: "pointer",
+      textAlign: "center",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+      fontWeight: "500",
+      color: "#94a3b8",
+    },
+    quickFilterActive: {
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      color: "white",
+      borderColor: "transparent",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
+    },
+    // Estados de carregamento e erro
+    loading: {
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      padding: "30px",
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "12px",
+      color: "#94a3b8",
+      justifyContent: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)",
+      marginBottom: "20px"
+    },
+    spinner: {
+      width: "24px",
+      height: "24px",
+      border: "3px solid #475569",
+      borderTop: "3px solid #3b82f6",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite",
+    },
+    error: {
+      padding: "20px",
+      background: "rgba(239, 68, 68, 0.1)",
+      border: "1px solid #dc2626",
+      borderRadius: "12px",
+      color: "#fca5a5",
+      textAlign: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      marginBottom: "20px"
+    },
+    emptyState: {
+      textAlign: "center",
+      padding: "60px 20px",
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "12px",
+      color: "#94a3b8",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)",
+      marginBottom: "20px"
+    },
+    // Ícones e decorações
+    icon: {
+      fontSize: isMobile ? "1.2rem" : "1.5rem",
+      marginRight: "8px"
+    }
+  };
+
   return (
     <div style={styles.container}>
-      {/* Cabeçalho */}
-      <div style={styles.header}>
+      {/* 🎯 HEADER PROFISSIONAL */}
+      <header style={styles.header}>
         <h1 style={styles.mainTitle}>Fazenda Ribeirão Preto</h1>
-        <p style={styles.subtitle}>Estágio Alfenarzinho - Pernambuco (SP)</p>
-      </div>
+        <p style={styles.subtitle}>Monitoramento Meteorológico Profissional</p>
+        <p style={styles.location}>
+          <span>📍</span> Estação meteorológica Fazenda Ribeirão Preto
+        </p>
+      </header>
 
-      {/* Layout principal */}
-      <div style={styles.layoutContainer}>
-        {/* Coluna esquerda - Estatísticas */}
-        <div style={styles.leftColumn}>
-          {/* Grid de estatísticas */}
-          <div style={styles.statsGrid}>
-            <div style={styles.statCard}>
-              <div style={styles.statTitle}>Ultimo Comunicado</div>
-              <div style={styles.statValue}>{ultimaComunicacao}</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statTitle}>Temperatura Atual</div>
-              <div style={styles.statValue}>{tempAtual.toFixed(1)}°C</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statTitle}>Umidade Atual</div>
-              <div style={styles.statValue}>{umidadeAtual.toFixed(1)}%</div>
-            </div>
-            <div style={styles.statCard}>
-              <div style={styles.statTitle}>Chuvas no Período</div>
-              <div style={styles.statValue}>{chuvaPeriodo.toFixed(1)}mm</div>
-            </div>
+      {/* 📊 CARTÕES DE STATUS (BOTÕES DA IMAGEM) */}
+      {!loading && !erro && agrupados.length > 0 && (
+        <div style={styles.statusCards}>
+          <div style={styles.statusCard}>
+            <h3 style={styles.statusTitle}>ÚLTIMA COMUNICAÇÃO</h3>
+            <p style={styles.statusValue}>{ultimaComunicacao}</p>
           </div>
-
-          {/* Filtros de período */}
-          <div style={styles.periodFilters}>
-            {["16/01/2025", "17/01/2025", "24h", "7 Días", "30 Dias"].map((period) => (
-              <button
-                key={period}
-                style={{
-                  ...styles.periodFilter,
-                  ...(periodo === period ? styles.periodFilterActive : {})
-                }}
-                onClick={() => {
-                  if (period === "24h") calcularPeriodoRapido("24h");
-                  else if (period === "7 Días") calcularPeriodoRapido("7d");
-                  else if (period === "30 Dias") calcularPeriodoRapido("30d");
-                }}
-              >
-                {period}
-              </button>
-            ))}
+          
+          <div style={styles.statusCard}>
+            <h3 style={styles.statusTitle}>TEMP. ATUAL</h3>
+            <p style={styles.statusValue}>{ultimaLeitura?.temperatura.toFixed(1) || '--'}°C</p>
           </div>
-
-          {/* Botões de ação */}
-          <div style={styles.actionButtons}>
-            <button 
-              style={styles.favoriteButton}
-              onClick={() => setFavorito(!favorito)}
-            >
-              {favorito ? "★" : "☆"} {favorito ? "Favoritado" : "Favoritar"}
-            </button>
-            <button style={styles.popupButton}>
-              [-] PopUp
-            </button>
+          
+          <div style={styles.statusCard}>
+            <h3 style={styles.statusTitle}>UMIDADE ATUAL</h3>
+            <p style={styles.statusValue}>{ultimaLeitura?.umidade.toFixed(0) || '--'}%</p>
           </div>
-
-          {/* Seção de máximo */}
-          <div style={styles.maxTimeInfo}>
-            <div style={styles.maxTimeTitle}>Tempo Máximo</div>
-            <div style={styles.maxTimeValue}>{horaTempMax}</div>
-            <div style={styles.maxTimeStats}>
-              <div style={styles.maxTimeStat}>
-                <div style={{...styles.statTitle, fontSize: "12px"}}>Chuvas</div>
-                <div style={styles.statValue}>{chuvaPeriodo > 0 ? chuvaPeriodo.toFixed(1) : "0"}</div>
-              </div>
-              <div style={styles.maxTimeStat}>
-                <div style={{...styles.statTitle, fontSize: "12px"}}>Temp Máx.</div>
-                <div style={styles.statValue}>{tempMax.toFixed(1)}</div>
-              </div>
-              <div style={styles.maxTimeStat}>
-                <div style={{...styles.statTitle, fontSize: "12px"}}>Umid Máx.</div>
-                <div style={styles.statValue}>{umidadeMax.toFixed(1)}</div>
-              </div>
-            </div>
+          
+          <div style={styles.statusCard}>
+            <h3 style={styles.statusTitle}>CHUVA ACUMULADA</h3>
+            <p style={styles.statusValue}>{totalChuva.toFixed(1)}mm</p>
           </div>
         </div>
+      )}
 
-        {/* Coluna direita - Gráfico e métricas */}
-        <div style={styles.rightColumn}>
-          {/* Seção do gráfico */}
-          <div style={styles.chartSection}>
-            <h3 style={styles.sectionTitle}>Monitoramento Meteorológico Local</h3>
-            
-            <div style={styles.chartHeader}>
-              <div style={styles.metricsLegend}>
-                <div style={styles.metricItem}>
-                  <div style={styles.metricLabel}>Chuvas</div>
-                  <div style={styles.metricValue}>{chuvaPeriodo.toFixed(1)}</div>
-                </div>
-                <div style={styles.metricItem}>
-                  <div style={styles.metricLabel}>Temp Máx.</div>
-                  <div style={styles.metricValue}>{tempMax.toFixed(1)}</div>
-                </div>
-                <div style={styles.metricItem}>
-                  <div style={styles.metricLabel}>Umid Máx.</div>
-                  <div style={styles.metricValue}>{umidadeMax.toFixed(1)}</div>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.chartContainer}>
-              <Bar
-                data={chartData}
-                options={chartOptions}
-              />
-            </div>
-          </div>
-
-          {/* Seção de umidade */}
-          <div style={styles.humiditySection}>
-            <div style={styles.humidityHeader}>
-              <h3 style={styles.sectionTitle}>Grau de Humidade</h3>
-              <div style={styles.metricValue}>{umidadeAtual.toFixed(1)}%</div>
-            </div>
-            
-            <div style={styles.humidityScale}>
-              <div style={styles.humidityValue}>0</div>
-              <div style={styles.humidityValue}>25</div>
-              <div style={styles.humidityValue}>50</div>
-              <div style={styles.humidityValue}>75</div>
-              <div style={styles.humidityValue}>100</div>
-            </div>
-            
-            <div style={styles.humidityBar}>
-              <div style={{
-                ...styles.humidityIndicator,
-                left: `${umidadeAtual}%`
-              }} />
-            </div>
-            
-            <div style={styles.dayLabels}>
-              <div style={styles.dayLabel}>Dia 1</div>
-              <div style={styles.dayLabel}>2</div>
-              <div style={styles.dayLabel}>3</div>
-              <div style={styles.dayLabel}>4</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Controles de configuração */}
+      {/* 🎛️ PAINEL DE CONTROLE */}
       <div style={styles.controlsCard}>
-        <h3 style={styles.sectionTitle}>Configurações</h3>
+        <h3 style={styles.controlsTitle}>⚙️ Configurações da Estação</h3>
         
-        {erro && (
-          <div style={styles.error}>
-            ⚠️ {erro}
-          </div>
-        )}
-        
-        {loading && (
-          <div style={styles.loading}>
-            <div style={styles.spinner}></div>
-            <span>Carregando dados...</span>
-          </div>
-        )}
-
         <div style={styles.formGrid}>
           <div style={styles.formGroup}>
             <label style={styles.label}>📡 Equipamento</label>
             {loadingEquipamentos ? (
-              <div style={styles.loading}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={styles.spinner}></div>
                 <span>Carregando equipamentos...</span>
               </div>
@@ -889,6 +762,8 @@ export default function App() {
                 style={styles.select}
                 value={equipamento}
                 onChange={(e) => setEquipamento(e.target.value)}
+                onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+                onBlur={(e) => e.target.style.borderColor = "#475569"}
               >
                 <option value="">Selecione um equipamento</option>
                 {equipamentos.map((eqp) => (
@@ -907,6 +782,8 @@ export default function App() {
               style={styles.input}
               value={dataInicial}
               onChange={(e) => setDataInicial(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
             />
           </div>
 
@@ -917,31 +794,139 @@ export default function App() {
               style={styles.input}
               value={dataFinal}
               onChange={(e) => setDataFinal(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
             />
           </div>
         </div>
 
+        {/* ⏱️ FILTROS RÁPIDOS */}
+        <div style={styles.quickFilters}>
+          {["24h", "7d", "30d"].map((p) => (
+            <button
+              key={p}
+              style={{
+                ...styles.quickFilterButton,
+                ...(periodo === p ? styles.quickFilterActive : {})
+              }}
+              onClick={() => calcularPeriodoRapido(p)}
+              onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#374151")}
+              onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
+              disabled={!equipamento}
+            >
+              {p === "24h" && "⏰ Últimas 24h"}
+              {p === "7d" && "📅 Última Semana"}
+              {p === "30d" && "📊 Último Mês"}
+            </button>
+          ))}
+        </div>
+
         <div style={styles.buttonGroup}>
           <button 
-            style={styles.primaryButton}
+            style={styles.primaryButton} 
             onClick={() => carregar()}
+            onMouseOver={(e) => e.target.style.transform = "translateY(-2px)"}
+            onMouseOut={(e) => e.target.style.transform = "translateY(0)"}
             disabled={!equipamento}
           >
             🔍 Aplicar Filtros
           </button>
           <button 
-            style={styles.secondaryButton}
+            style={styles.secondaryButton} 
             onClick={limparFiltro}
+            onMouseOver={(e) => e.target.style.backgroundColor = "#374151"}
+            onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
           >
             🗑️ Limpar Filtros
           </button>
         </div>
       </div>
 
+      {/* 📊 STATUS E ERROS */}
+      <div>
+        {loading && periodo === "24h" && (
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <span>Carregando dados das últimas 24h...</span>
+          </div>
+        )}
+        
+        {loading && periodo !== "24h" && (
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <span>Carregando dados meteorológicos...</span>
+          </div>
+        )}
+        
+        {erro && (
+          <div style={styles.error}>
+            ⚠️ {erro}
+          </div>
+        )}
+
+        {!loading && !erro && agrupados.length === 0 && equipamento && (
+          <div style={styles.emptyState}>
+            <div style={{ fontSize: "4rem", marginBottom: "15px", opacity: 0.5 }}>📈</div>
+            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Nenhum dado encontrado</h3>
+            <p style={{ margin: 0, color: "#94a3b8" }}>Não há dados disponíveis para os filtros selecionados.</p>
+          </div>
+        )}
+
+        {!equipamento && !loadingEquipamentos && (
+          <div style={styles.emptyState}>
+            <div style={{ fontSize: "4rem", marginBottom: "15px", opacity: 0.5 }}>📡</div>
+            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Selecione um equipamento</h3>
+            <p style={{ margin: 0, color: "#94a3b8" }}>Escolha um equipamento da lista para visualizar os dados.</p>
+          </div>
+        )}
+      </div>
+
+      {/* 📈 GRÁFICO COMBINADO (CHUVA, TEMPERATURA, UMIDADE) */}
+      {agrupados.length > 0 && (
+        <div style={styles.chartContainer}>
+          <h3 style={styles.chartTitle}>📊 Gráfico Meteorológico Combinado</h3>
+          <div style={styles.chartInnerContainer}>
+            <Line 
+              data={combinedChartData} 
+              options={chartOptions}
+            />
+          </div>
+          <div style={{
+            marginTop: "15px",
+            fontSize: "0.85rem",
+            color: "#94a3b8",
+            textAlign: "center",
+            display: "flex",
+            justifyContent: "center",
+            gap: "20px",
+            flexWrap: "wrap"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <div style={{ width: "15px", height: "15px", backgroundColor: "#3b82f6", borderRadius: "3px" }}></div>
+              <span>Chuva (mm)</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <div style={{ width: "15px", height: "2px", backgroundColor: "#60a5fa" }}></div>
+              <span>Umidade (%)</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <div style={{ width: "15px", height: "2px", backgroundColor: "#f87171" }}></div>
+              <span>Temperatura (°C)</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+          input[type="datetime-local"] {
+            font-size: 16px;
+          }
         }
 
         * {
@@ -949,9 +934,8 @@ export default function App() {
         }
 
         input:focus, select:focus, button:focus {
-          outline: none;
-          border-color: #3498db;
-          box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+          outline: 2px solid #3b82f6;
+          outline-offset: 2px;
         }
 
         button:hover {
@@ -959,9 +943,15 @@ export default function App() {
         }
 
         body {
-          background: #f8f9fa;
+          background: #0f172a;
           margin: 0;
           padding: 0;
+        }
+
+        .status-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+          border-color: rgba(59, 130, 246, 0.3);
         }
       `}</style>
     </div>
