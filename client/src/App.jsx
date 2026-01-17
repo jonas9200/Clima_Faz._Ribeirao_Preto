@@ -22,21 +22,25 @@ const calcularDeltaT = (temp, umid) => {
   return parseFloat(resultado.toFixed(2));
 };
 
-// Função para formatar data e hora do registro
+// Função para formatar data e hora do registro (corrigido para horário de Brasília)
 const formatarDataHora = (registro) => {
   const data = new Date(registro);
-  const dia = data.getDate().toString().padStart(2, '0');
-  const mes = (data.getMonth() + 1).toString().padStart(2, '0');
-  const hora = data.getHours().toString().padStart(2, '0');
-  const min = data.getMinutes().toString().padStart(2, '0');
+  // Converter para horário de Brasília (UTC-3)
+  const dataLocal = new Date(data.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const dia = dataLocal.getDate().toString().padStart(2, '0');
+  const mes = (dataLocal.getMonth() + 1).toString().padStart(2, '0');
+  const hora = dataLocal.getHours().toString().padStart(2, '0');
+  const min = dataLocal.getMinutes().toString().padStart(2, '0');
   return `${dia}/${mes} ${hora}:${min}`;
 };
 
-// Função para formatar apenas a hora
+// Função para formatar apenas a hora (corrigido para horário de Brasília)
 const formatarHora = (registro) => {
   const data = new Date(registro);
-  const hora = data.getHours().toString().padStart(2, '0');
-  const min = data.getMinutes().toString().padStart(2, '0');
+  // Converter para horário de Brasília (UTC-3)
+  const dataLocal = new Date(data.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const hora = dataLocal.getHours().toString().padStart(2, '0');
+  const min = dataLocal.getMinutes().toString().padStart(2, '0');
   return `${hora}:${min}`;
 };
 
