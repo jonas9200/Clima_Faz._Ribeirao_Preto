@@ -28,7 +28,7 @@ const formatarDataHora = (registro) => {
   const dataStr = registro.replace('T', ' ').substring(0, 16); // "2026-01-17 16:09"
   const [data, hora] = dataStr.split(' ');
   const [ano, mes, dia] = data.split('-');
-  return `${dia}/${mes} ${hora}`;
+  return `${dia}/${mes}/${ano} ${hora}`;
 };
 
 // Função para formatar apenas a hora (usando horário do banco diretamente)
