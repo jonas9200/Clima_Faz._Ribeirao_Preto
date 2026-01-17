@@ -64,7 +64,12 @@ app.get("/series", async (req, res) => {
   
   try {
     let query = `
-      SELECT registro, equipamento, chuva, temperatura, umidade 
+      SELECT 
+        registro AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' as registro,
+        equipamento, 
+        chuva, 
+        temperatura, 
+        umidade 
       FROM iot.registros 
       WHERE 1=1
     `;
@@ -72,15 +77,15 @@ app.get("/series", async (req, res) => {
     
     if (equipamento) { 
       params.push(equipamento); 
-      query += ` AND equipamento = $${params.length}`; 
+      query += ` AND equipamento = ${params.length}`; 
     }
     if (data_inicial) { 
       params.push(data_inicial); 
-      query += ` AND registro >= $${params.length}`; 
+      query += ` AND registro >= ${params.length}`; 
     }
     if (data_final) { 
       params.push(data_final); 
-      query += ` AND registro <= $${params.length}`; 
+      query += ` AND registro <= ${params.length}`; 
     }
     
     query += " ORDER BY registro ASC";
