@@ -8,7 +8,7 @@ import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 
 // Endereço do seu servidor local (Mudar para o link do Render ao enviar para o dev)
-const API_URL = "https://clima-faz-ribeirao-preto-api.onrender.com";
+cconst API_URL = import.meta.env.VITE_API_URL || "https://clima-faz-ribeirao-preto-api.onrender.com";
 
 const calcularDeltaT = (temp, umid) => {
   if (temp === null || umid === null) return null;
