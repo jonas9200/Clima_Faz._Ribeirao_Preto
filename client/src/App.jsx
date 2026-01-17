@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ReferenceArea
@@ -7,7 +7,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 
-// Função para calcular Delta T (do código 1)
+// Função para calcular Delta T
 const calcularDeltaT = (temp, umid) => {
   if (temp === null || umid === null) return null;
   const t = temp;
@@ -20,7 +20,8 @@ const calcularDeltaT = (temp, umid) => {
   return parseFloat(resultado.toFixed(2));
 };
 
-export default function App() {
+function App() {
+  // Estados do código 2
   const [dados, setDados] = useState([]);
   const [equipamentos, setEquipamentos] = useState([]);
   const [equipamento, setEquipamento] = useState("");
@@ -29,14 +30,55 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const [totalChuva, setTotalChuva] = useState(0);
+
+  // Estados do código 1
   const [previsao, setPrevisao] = useState([]);
   const [janelasIdeais, setJanelasIdeais] = useState([]);
   const dashboardRef = useRef();
 
-  const baseUrl = import.meta.env.VITE_API_URL || "";
+  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:10000";
 
-  // Formatadores de data
-  function toLocalDatetimeString(date) {
+  // Inicializar datas
+  useEffect(() => {
+    const agora = new Date();
+    const inicio = new Date(agora.getTime() - 24 * 60 * 60 * 1000);
+    
+    // Formatar para input datetime-local
+    setFiltroInicio(formatarParaInput(inicio));
+    setFiltroFim(formatarParaInput(agora));
+
+    // Carregar equipamentos
+    carregarEquipamentos();
+
+    // Dados de exemplo para previsão
+    setPrevisao([
+      { data: "Seg 25", max: 28, min: 18, probChuva: 30 },
+      { data: "Ter 26", max: 27, min: 17, probChuva: 10 },
+      { data: "Qua 27", max: 29, min: 19, probChuva: 5 },
+      { data: "Qui 28", max: 30, min: 20, probChuva: 20 },
+      { data: "Sex 29", max: 31, min: 21, probChuva: 40 },
+      { data: "Sáb 30", max: 29, min: 20, probChuva: 60 },
+      { data: "Dom 31", max: 28, min: 19, probChuva: 25 }
+    ]);
+
+    setJanelasIdeais([
+      { dia: "25 Fev", hora: "06:00", deltaT: 3.5 },
+      { dia: "26 Fev", hora: "07:00", deltaT: 4.2 },
+      { dia: "27 Fev", hora: "05:30", deltaT: 3.8 },
+      { dia: "28 Fev", hora: "06:30", deltaT: 4.5 },
+      { dia: "29 Fev", hora: "07:00", deltaT: 3.9 }
+    ]);
+  }, []);
+
+  // Carregar dados quando equipamento ou datas mudam
+  useEffect(() => {
+    if (equipamento && filtroInicio && filtroFim) {
+      carregarDados();
+    }
+  }, [equipamento, filtroInicio, filtroFim]);
+
+  // Funções de formatação
+  function formatarParaInput(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -45,7 +87,7 @@ export default function App() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  function toDatabaseFormat(datetimeString) {
+  function formatarParaBanco(datetimeString) {
     if (!datetimeString) return '';
     const date = new Date(datetimeString);
     const year = date.getFullYear();
@@ -56,134 +98,85 @@ export default function App() {
     return `${year}-${month}-${day} ${hours}:${minutes}:00`;
   }
 
-  // 🔄 Carregar lista de equipamentos
-  useEffect(() => {
-    carregarEquipamentos();
-    
-    // Inicializar datas (últimas 24h)
-    const agora = new Date();
-    const inicio = new Date(agora.getTime() - 86400000);
-    setFiltroInicio(toLocalDatetimeString(inicio));
-    setFiltroFim(toLocalDatetimeString(agora));
-    
-    // Carregar previsão do tempo (exemplo estático - substituir por API real se necessário)
-    const previsaoExemplo = [
-      { data: "Seg 25", max: 28, min: 18, probChuva: 30 },
-      { data: "Ter 26", max: 27, min: 17, probChuva: 10 },
-      { data: "Qua 27", max: 29, min: 19, probChuva: 5 },
-      { data: "Qui 28", max: 30, min: 20, probChuva: 20 },
-      { data: "Sex 29", max: 31, min: 21, probChuva: 40 },
-      { data: "Sáb 30", max: 29, min: 20, probChuva: 60 },
-      { data: "Dom 31", max: 28, min: 19, probChuva: 25 }
-    ];
-    setPrevisao(previsaoExemplo);
-    
-    // Exemplo de janelas ideais
-    setJanelasIdeais([
-      { dia: "25 Fev", hora: "06:00", deltaT: 3.5 },
-      { dia: "26 Fev", hora: "07:00", deltaT: 4.2 },
-      { dia: "27 Fev", hora: "05:30", deltaT: 3.8 },
-      { dia: "28 Fev", hora: "06:30", deltaT: 4.5 },
-      { dia: "29 Fev", hora: "07:00", deltaT: 3.9 }
-    ]);
-  }, []);
-
   async function carregarEquipamentos() {
     try {
       const url = `${baseUrl}/api/equipamentos`;
       const resp = await fetch(url);
-      if (!resp.ok) throw new Error("Erro ao buscar equipamentos");
-      const json = await resp.json();
-      const listaEquipamentos = json.equipamentos || ["Pluviometro_01"];
-      setEquipamentos(listaEquipamentos);
-      if (listaEquipamentos.length > 0 && !equipamento) {
-        setEquipamento(listaEquipamentos[0]);
+      if (resp.ok) {
+        const json = await resp.json();
+        const lista = json.equipamentos || ["Pluviometro_01"];
+        setEquipamentos(lista);
+        if (lista.length > 0) {
+          setEquipamento(lista[0]);
+        }
       }
     } catch (e) {
-      console.error("Erro ao carregar equipamentos:", e);
-      const listaPadrao = ["Pluviometro_01"];
-      setEquipamentos(listaPadrao);
-      setEquipamento(listaPadrao[0]);
+      console.error("Erro equipamentos:", e);
+      setEquipamentos(["Pluviometro_01"]);
+      setEquipamento("Pluviometro_01");
     }
   }
-
-  // 🔄 Carregar dados quando equipamento ou datas mudarem
-  useEffect(() => {
-    if (equipamento && filtroInicio && filtroFim) {
-      carregarDados();
-    }
-  }, [equipamento, filtroInicio, filtroFim]);
 
   async function carregarDados() {
     setLoading(true);
     setErro("");
     try {
-      const params = new URLSearchParams({ 
-        equipamento,
-        data_inicial: toDatabaseFormat(filtroInicio),
-        data_final: toDatabaseFormat(filtroFim)
+      const params = new URLSearchParams({
+        equipamento: equipamento,
+        data_inicial: formatarParaBanco(filtroInicio),
+        data_final: formatarParaBanco(filtroFim)
       });
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
       const resp = await fetch(url);
-      if (!resp.ok) throw new Error("Erro ao buscar dados");
+      
+      if (!resp.ok) throw new Error("Erro na API");
+      
       const json = await resp.json();
-
-      const lista = json.dados || [];
-      setDados(lista);
+      setDados(json.dados || []);
       setTotalChuva(json.total_chuva || 0);
+      
     } catch (e) {
-      setErro("Falha ao carregar dados. Verifique a API.");
+      setErro("Falha ao carregar dados");
       console.error(e);
     } finally {
       setLoading(false);
     }
   }
 
-  // Processar dados para o formato do gráfico (similar ao código 1)
+  // Processar dados para os gráficos
   const dadosProcessados = useMemo(() => {
     if (!dados.length) return [];
-    
-    // Agrupar por hora para melhor visualização
-    const mapaPorHora = {};
-    
-    dados.forEach((item) => {
-      const dataRegistro = new Date(item.registro);
-      const horaKey = dataRegistro.toISOString().slice(0, 13); // Agrupa por hora
-      
-      if (!mapaPorHora[horaKey]) {
-        mapaPorHora[horaKey] = {
-          timestamp: dataRegistro.getTime(),
-          hora: dataRegistro.getHours().toString().padStart(2, '0') + ':00',
-          tempSoma: 0,
-          umidSoma: 0,
-          chuvaSoma: 0,
-          contagem: 0
+
+    // Agrupar por hora
+    const mapa = {};
+    dados.forEach(item => {
+      const hora = new Date(item.registro).getHours().toString().padStart(2, '0') + ':00';
+      if (!mapa[hora]) {
+        mapa[hora] = {
+          hora,
+          temp: 0,
+          umid: 0,
+          chuva: 0,
+          count: 0
         };
       }
-      
-      mapaPorHora[horaKey].tempSoma += Number(item.temperatura) || 0;
-      mapaPorHora[horaKey].umidSoma += Number(item.umidade) || 0;
-      mapaPorHora[horaKey].chuvaSoma += Number(item.chuva) || 0;
-      mapaPorHora[horaKey].contagem++;
+      mapa[hora].temp += Number(item.temperatura) || 0;
+      mapa[hora].umid += Number(item.umidade) || 0;
+      mapa[hora].chuva += Number(item.chuva) || 0;
+      mapa[hora].count++;
     });
 
-    // Converter para array e calcular médias
-    const resultado = Object.values(mapaPorHora)
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .map(item => ({
-        timestamp: item.timestamp,
-        hora: item.hora,
-        temp: item.contagem > 0 ? Number((item.tempSoma / item.contagem).toFixed(2)) : 0,
-        umid: item.contagem > 0 ? Number((item.umidSoma / item.contagem).toFixed(2)) : 0,
-        chuva: Number(item.chuvaSoma.toFixed(2)),
-        deltaT: calcularDeltaT(
-          item.contagem > 0 ? (item.tempSoma / item.contagem) : 0,
-          item.contagem > 0 ? (item.umidSoma / item.contagem) : 0
-        )
-      }));
-
-    return resultado;
+    return Object.values(mapa).map(h => ({
+      hora: h.hora,
+      temp: h.count > 0 ? Number((h.temp / h.count).toFixed(1)) : 0,
+      umid: h.count > 0 ? Number((h.umid / h.count).toFixed(1)) : 0,
+      chuva: Number(h.chuva.toFixed(2)),
+      deltaT: calcularDeltaT(
+        h.count > 0 ? h.temp / h.count : 0,
+        h.count > 0 ? h.umid / h.count : 0
+      )
+    })).sort((a, b) => a.hora.localeCompare(b.hora));
   }, [dados]);
 
   // Funções de filtro rápido
@@ -191,19 +184,23 @@ export default function App() {
     const agora = new Date();
     const inicio = new Date();
 
-    if (periodo === "24h") {
-      inicio.setHours(inicio.getHours() - 24);
-    } else if (periodo === "7d") {
-      inicio.setDate(inicio.getDate() - 7);
-    } else if (periodo === "30d") {
-      inicio.setDate(inicio.getDate() - 30);
+    switch (periodo) {
+      case "24h":
+        inicio.setHours(inicio.getHours() - 24);
+        break;
+      case "7d":
+        inicio.setDate(inicio.getDate() - 7);
+        break;
+      case "30d":
+        inicio.setDate(inicio.getDate() - 30);
+        break;
     }
 
-    setFiltroInicio(toLocalDatetimeString(inicio));
-    setFiltroFim(toLocalDatetimeString(agora));
+    setFiltroInicio(formatarParaInput(inicio));
+    setFiltroFim(formatarParaInput(agora));
   };
 
-  // Funções de exportação (do código 1)
+  // Exportações
   const exportarExcel = () => {
     const ws = XLSX.utils.json_to_sheet(dadosProcessados);
     const wb = XLSX.utils.book_new();
@@ -218,38 +215,17 @@ export default function App() {
     pdf.save("Dashboard_FazendaRP.pdf");
   };
 
-  // Dados do último registro
+  // Último dado
   const ultimoDado = dadosProcessados.length > 0 ? dadosProcessados[dadosProcessados.length - 1] : null;
-
-  // Estilos (do código 1)
-  const inputStyle = { 
-    background: '#0f172a', 
-    border: '1px solid #334155', 
-    color: 'white', 
-    padding: '8px', 
-    borderRadius: '6px', 
-    fontSize: '12px' 
-  };
-
-  const btnStyle = { 
-    background: '#334155', 
-    color: 'white', 
-    border: 'none', 
-    padding: '10px 15px', 
-    borderRadius: '6px', 
-    cursor: 'pointer', 
-    fontSize: '12px', 
-    fontWeight: 'bold' 
-  };
 
   return (
     <div style={{ width: '100%', padding: '20px', background: '#0f172a', minHeight: '100vh', color: 'white', fontFamily: 'sans-serif' }}>
       <div ref={dashboardRef} style={{ padding: '10px' }}>
         
-        {/* CABEÇALHO */}
+        {/* CABEÇALHO - Código 1 Style */}
         <header style={{ maxWidth: '1100px', margin: '0 auto 20px auto', display: 'flex', alignItems: 'center', gap: '20px', padding: '15px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
           <div style={{ background: 'white', padding: '5px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '24px', color: '#3b82f6' }}>🌦️</div>
+            <div style={{ fontSize: '24px' }}>🌦️</div>
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '20px' }}>Fazenda Ribeirão Preto</h1>
@@ -274,10 +250,22 @@ export default function App() {
 
         {/* CARDS RESUMO */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-          <Card title="Última Comunicação" value={ultimoDado?.hora || '--'} />
-          <Card title="Temperatura Atual" value={`${ultimoDado?.temp || '--'}°C`} color="#ef4444" />
-          <Card title="Umidade Atual" value={`${ultimoDado?.umid || '--'}%`} color="#10b981" />
-          <Card title="Chuva no Período" value={`${totalChuva.toFixed(1)}mm`} color="#3b82f6" />
+          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
+            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Última Comunicação</p>
+            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: 'white' }}>{ultimoDado?.hora || '--'}</h3>
+          </div>
+          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
+            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Temperatura Atual</p>
+            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: '#ef4444' }}>{ultimoDado ? `${ultimoDado.temp}°C` : '--'}</h3>
+          </div>
+          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
+            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Umidade Atual</p>
+            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: '#10b981' }}>{ultimoDado ? `${ultimoDado.umid}%` : '--'}</h3>
+          </div>
+          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid '#334155' }}>
+            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Chuva no Período</p>
+            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: '#3b82f6' }}>{totalChuva.toFixed(1)}mm</h3>
+          </div>
         </div>
 
         {/* FILTROS E EXPORTAÇÃO */}
@@ -288,28 +276,112 @@ export default function App() {
                 type="datetime-local" 
                 value={filtroInicio} 
                 onChange={(e) => setFiltroInicio(e.target.value)} 
-                style={inputStyle} 
+                style={{ 
+                  background: '#0f172a', 
+                  border: '1px solid #334155', 
+                  color: 'white', 
+                  padding: '8px', 
+                  borderRadius: '6px', 
+                  fontSize: '12px' 
+                }} 
               />
               <input 
                 type="datetime-local" 
                 value={filtroFim} 
                 onChange={(e) => setFiltroFim(e.target.value)} 
-                style={inputStyle} 
+                style={{ 
+                  background: '#0f172a', 
+                  border: '1px solid #334155', 
+                  color: 'white', 
+                  padding: '8px', 
+                  borderRadius: '6px', 
+                  fontSize: '12px' 
+                }} 
               />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => aplicarFiltroRapido("24h")} style={btnStyle}>24h</button>
-              <button onClick={() => aplicarFiltroRapido("7d")} style={btnStyle}>7 Dias</button>
-              <button onClick={() => aplicarFiltroRapido("30d")} style={btnStyle}>30 Dias</button>
+              <button 
+                onClick={() => aplicarFiltroRapido("24h")}
+                style={{ 
+                  background: '#334155', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '10px 15px', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontSize: '12px', 
+                  fontWeight: 'bold' 
+                }}
+              >
+                24h
+              </button>
+              <button 
+                onClick={() => aplicarFiltroRapido("7d")}
+                style={{ 
+                  background: '#334155', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '10px 15px', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontSize: '12px', 
+                  fontWeight: 'bold' 
+                }}
+              >
+                7 Dias
+              </button>
+              <button 
+                onClick={() => aplicarFiltroRapido("30d")}
+                style={{ 
+                  background: '#334155', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '10px 15px', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontSize: '12px', 
+                  fontWeight: 'bold' 
+                }}
+              >
+                30 Dias
+              </button>
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
-              <button onClick={exportarExcel} style={{ ...btnStyle, background: '#10b981' }}>📊 Excel</button>
-              <button onClick={exportarPDF} style={{ ...btnStyle, background: '#3b82f6' }}>📥 PDF</button>
+              <button 
+                onClick={exportarExcel}
+                style={{ 
+                  background: '#10b981', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '10px 15px', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontSize: '12px', 
+                  fontWeight: 'bold' 
+                }}
+              >
+                📊 Excel
+              </button>
+              <button 
+                onClick={exportarPDF}
+                style={{ 
+                  background: '#3b82f6', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '10px 15px', 
+                  borderRadius: '6px', 
+                  cursor: 'pointer', 
+                  fontSize: '12px', 
+                  fontWeight: 'bold' 
+                }}
+              >
+                📥 PDF
+              </button>
             </div>
           </div>
         </div>
 
-        {/* MENSAGEM DE ERRO OU CARREGAMENTO */}
+        {/* MENSAGENS */}
         {erro && (
           <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', padding: '15px', background: '#7f1d1d', color: '#fca5a5', borderRadius: '8px' }}>
             ⚠️ {erro}
@@ -344,11 +416,10 @@ export default function App() {
               </div>
             </div>
 
-            {/* SEÇÃO DE PREVISÃO E JANELAS */}
+            {/* PREVISÃO E JANELAS */}
             <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', padding: '20px', borderRadius: '16px', border: '2px solid #334155', background: 'rgba(30, 41, 59, 0.5)' }}>
               <h2 style={{ fontSize: '14px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '15px' }}>Previsão Climática e Recomendações</h2>
               
-              {/* Janelas Ideais */}
               <div style={{ marginBottom: '20px', padding: '15px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', border: '1px solid #10b981' }}>
                 <h3 style={{ fontSize: '12px', color: '#10b981', margin: '0 0 10px 0' }}>✅ Próximas Janelas Ideais para Pulverização (Previsão)</h3>
                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
@@ -362,7 +433,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Cards de 7 Dias */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px' }}>
                 {previsao.map((p, i) => (
                   <div key={i} style={{ background: '#1e293b', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid #334155' }}>
@@ -395,7 +465,7 @@ export default function App() {
           </>
         )}
 
-        {/* MENSAGEM SEM DADOS */}
+        {/* SEM DADOS */}
         {!loading && dadosProcessados.length === 0 && equipamento && !erro && (
           <div style={{ maxWidth: '1100px', margin: '0 auto', background: '#1e293b', padding: '40px', borderRadius: '16px', border: '1px solid #334155', textAlign: 'center', color: '#94a3b8' }}>
             <div style={{ fontSize: '48px', marginBottom: '20px' }}>📈</div>
@@ -408,10 +478,4 @@ export default function App() {
   );
 }
 
-// Componente Card (do código 1)
-const Card = ({ title, value, color }) => (
-  <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
-    <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>{title}</p>
-    <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: color || 'white' }}>{value || '--'}</h3>
-  </div>
-);
+export default App;
