@@ -22,6 +22,24 @@ const calcularDeltaT = (temp, umid) => {
   return parseFloat(resultado.toFixed(2));
 };
 
+// Função para formatar data e hora do registro
+const formatarDataHora = (registro) => {
+  const data = new Date(registro);
+  const dia = data.getDate().toString().padStart(2, '0');
+  const mes = (data.getMonth() + 1).toString().padStart(2, '0');
+  const hora = data.getHours().toString().padStart(2, '0');
+  const min = data.getMinutes().toString().padStart(2, '0');
+  return `${dia}/${mes} ${hora}:${min}`;
+};
+
+// Função para formatar apenas a hora
+const formatarHora = (registro) => {
+  const data = new Date(registro);
+  const hora = data.getHours().toString().padStart(2, '0');
+  const min = data.getMinutes().toString().padStart(2, '0');
+  return `${hora}:${min}`;
+};
+
 function App() {
   const [dataFull, setDataFull] = useState([]);
   const [equipamentos, setEquipamentos] = useState([]);
@@ -85,7 +103,9 @@ function App() {
         if (resBanco?.dados) {
           const formatado = resBanco.dados.map(item => ({
             timestamp: new Date(item.registro).getTime(),
-            hora: new Date(item.registro).getHours().toString().padStart(2, '0') + ':00',
+            registroOriginal: item.registro,
+            dataHora: formatarDataHora(item.registro),
+            hora: formatarHora(item.registro),
             temp: Number(item.temperatura) || 0,
             umid: Number(item.umidade) || 0,
             chuva: Number(item.chuva) || 0,
@@ -104,7 +124,14 @@ function App() {
 
   // --- 3. EXPORTAÇÕES ---
   const exportarExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(dataFull);
+    const dadosExportar = dataFull.map(item => ({
+      'Data/Hora': item.dataHora,
+      'Temperatura (°C)': item.temp,
+      'Umidade (%)': item.umid,
+      'Chuva (mm)': item.chuva,
+      'Delta T': item.deltaT
+    }));
+    const ws = XLSX.utils.json_to_sheet(dadosExportar);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Dados Estação");
     XLSX.writeFile(wb, "Relatorio_FazendaRP.xlsx");
@@ -115,6 +142,23 @@ function App() {
     const pdf = new jsPDF('p', 'mm', 'a4');
     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, (canvas.height * 210) / canvas.width);
     pdf.save("Dashboard_FazendaRP.pdf");
+  };
+
+  // Tooltip customizado para mostrar data e hora completa
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', padding: '10px', borderRadius: '8px' }}>
+          <p style={{ margin: '0 0 8px 0', color: '#3b82f6', fontWeight: 'bold' }}>{payload[0].payload.dataHora}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ margin: '4px 0', color: entry.color, fontSize: '12px' }}>
+              {entry.name}: {entry.value !== null ? entry.value.toFixed(2) : '--'} {entry.name === 'Chuva' ? 'mm' : entry.name.includes('Temp') ? '°C' : '%'}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -137,13 +181,13 @@ function App() {
 
         {/* CARDS RESUMO */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-          <Card title="Última Comunicação" value={ultimoDado?.hora} />
+          <Card title="Última Comunicação" value={ultimoDado?.dataHora} />
           <Card title="Temperatura Atual" value={`${ultimoDado?.temp || '--'}°C`} color="#ef4444" />
           <Card title="Umidade Atual" value={`${ultimoDado?.umid || '--'}%`} color="#10b981" />
           <Card title="Chuva no Período" value={`${somaChuvaTotal.toFixed(1)}mm`} color="#3b82f6" />
         </div>
 
-        {/* FILTROS E EXPORTAÇÃO (RESTAURADOS) */}
+        {/* FILTROS E EXPORTAÇÃO */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -162,17 +206,24 @@ function App() {
           </div>
         </div>
 
-        {/* GRÁFICO PRINCIPAL COM TÍTULOS NOS EIXOS */}
+        {/* GRÁFICO PRINCIPAL COM TOOLTIPS CUSTOMIZADOS */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', background: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', borderLeft: '4px solid #3b82f6', paddingLeft: '15px' }}>Monitoramento Meteorológico Local</h2>
           <div style={{ width: '100%', height: 400 }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={dadosGrafico}>
                 <CartesianGrid stroke="#334155" vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="hora" stroke="#94a3b8" fontSize={10} />
+                <XAxis 
+                  dataKey="hora" 
+                  stroke="#94a3b8" 
+                  fontSize={10}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
                 <YAxis yAxisId="left" stroke="#94a3b8" width={80} label={{ value: '°C / % Umidade', angle: -90, position: 'insideLeft', style: { fill: '#94a3b8' } }} />
                 <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" width={80} label={{ value: 'Chuva (mm)', angle: -90, position: 'insideRight', style: { fill: '#3b82f6' } }} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155' }} />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
                 <Bar yAxisId="right" dataKey="chuva" name="Chuva" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
                 <Line yAxisId="left" type="monotone" dataKey="temp" name="Temp Méd" stroke="#ef4444" strokeWidth={3} dot={false} />
@@ -182,7 +233,7 @@ function App() {
           </div>
         </div>
 
-        {/* SEÇÃO DE PREVISÃO E JANELAS (RESTABELECIDA COMPLETA) */}
+        {/* SEÇÃO DE PREVISÃO E JANELAS */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', padding: '20px', borderRadius: '16px', border: '2px solid #334155', background: 'rgba(30, 41, 59, 0.5)' }}>
            <h2 style={{ fontSize: '14px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '15px' }}>Previsão Climática e Recomendações</h2>
            
@@ -212,16 +263,24 @@ function App() {
           </div>
         </div>
 
-        {/* GRÁFICO DELTA T COM CORES DE ZONA (RESTAURADO) */}
+        {/* GRÁFICO DELTA T */}
         <div style={{ maxWidth: '1100px', margin: '0 auto', background: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', borderLeft: '4px solid #facc15', paddingLeft: '15px' }}>Janela para aplicação (Delta T)</h2>
           <div style={{ width: '100%', height: 250 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dadosGrafico}>
                 <CartesianGrid stroke="#334155" vertical={false} />
-                <XAxis dataKey="hora" stroke="#94a3b8" fontSize={10} />
+                <XAxis 
+                  dataKey="hora" 
+                  stroke="#94a3b8" 
+                  fontSize={10}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
                 <YAxis stroke="#94a3b8" domain={[0, 15]} width={40} />
-                {/* Zonas Coloridas Restauradas */}
+                <Tooltip content={<CustomTooltip />} />
+                {/* Zonas Coloridas */}
                 <ReferenceArea y1={0} y2={2} fill="#facc15" fillOpacity={0.2} label={{ value: 'Atenção', fill: '#facc15', fontSize: 10 }} />
                 <ReferenceArea y1={2} y2={8} fill="#10b981" fillOpacity={0.2} label={{ value: 'Ideal', fill: '#10b981', fontSize: 10 }} />
                 <ReferenceArea y1={8} y2={10} fill="#facc15" fillOpacity={0.2} />
