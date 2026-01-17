@@ -1,93 +1,87 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import {
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ReferenceArea
-} from 'recharts';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
+import { useEffect, useState } from "react";
+import { Line, Bar } from "react-chartjs-2";
+import "chart.js/auto";
 
-// Função para calcular Delta T
-const calcularDeltaT = (temp, umid) => {
-  if (temp === null || umid === null) return null;
-  const t = temp;
-  const u = umid;
-  const termo1 = t * Math.atan(0.151977 * Math.pow(u + 8.313659, 0.5));
-  const termo2 = Math.atan(t + u);
-  const termo3 = Math.atan(u - 1.676331);
-  const termo4 = 0.00391838 * Math.pow(u, 1.5) * Math.atan(0.023101 * u);
-  const resultado = t - ((termo1 + termo2) - termo3 + termo4 - 4.686035);
-  return parseFloat(resultado.toFixed(2));
-};
-
-function App() {
-  // Estados do código 2
+export default function App() {
   const [dados, setDados] = useState([]);
   const [equipamentos, setEquipamentos] = useState([]);
   const [equipamento, setEquipamento] = useState("");
-  const [filtroInicio, setFiltroInicio] = useState("");
-  const [filtroFim, setFiltroFim] = useState("");
+  const [dataInicial, setDataInicial] = useState("");
+  const [dataFinal, setDataFinal] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingEquipamentos, setLoadingEquipamentos] = useState(false);
   const [erro, setErro] = useState("");
+  const [periodo, setPeriodo] = useState("24h");
   const [totalChuva, setTotalChuva] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [activeTab, setActiveTab] = useState("chuva");
 
-  // Estados do código 1
-  const [previsao, setPrevisao] = useState([]);
-  const [janelasIdeais, setJanelasIdeais] = useState([]);
-  const dashboardRef = useRef();
+  const baseUrl = import.meta.env.VITE_API_URL || "";
 
-  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:10000";
-
-  // Inicializar datas
+  // Detecta se é mobile
   useEffect(() => {
-    const agora = new Date();
-    const inicio = new Date(agora.getTime() - 24 * 60 * 60 * 1000);
-    
-    // Formatar para input datetime-local
-    setFiltroInicio(formatarParaInput(inicio));
-    setFiltroFim(formatarParaInput(agora));
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
 
-    // Carregar equipamentos
-    carregarEquipamentos();
-
-    // Dados de exemplo para previsão
-    setPrevisao([
-      { data: "Seg 25", max: 28, min: 18, probChuva: 30 },
-      { data: "Ter 26", max: 27, min: 17, probChuva: 10 },
-      { data: "Qua 27", max: 29, min: 19, probChuva: 5 },
-      { data: "Qui 28", max: 30, min: 20, probChuva: 20 },
-      { data: "Sex 29", max: 31, min: 21, probChuva: 40 },
-      { data: "Sáb 30", max: 29, min: 20, probChuva: 60 },
-      { data: "Dom 31", max: 28, min: 19, probChuva: 25 }
-    ]);
-
-    setJanelasIdeais([
-      { dia: "25 Fev", hora: "06:00", deltaT: 3.5 },
-      { dia: "26 Fev", hora: "07:00", deltaT: 4.2 },
-      { dia: "27 Fev", hora: "05:30", deltaT: 3.8 },
-      { dia: "28 Fev", hora: "06:30", deltaT: 4.5 },
-      { dia: "29 Fev", hora: "07:00", deltaT: 3.9 }
-    ]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Carregar dados quando equipamento ou datas mudam
+  // 🔄 Carregar lista de equipamentos
   useEffect(() => {
-    if (equipamento && filtroInicio && filtroFim) {
-      carregarDados();
-    }
-  }, [equipamento, filtroInicio, filtroFim]);
+    carregarEquipamentos();
+  }, []);
 
-  // Funções de formatação
-  function formatarParaInput(date) {
+  async function carregarEquipamentos() {
+    setLoadingEquipamentos(true);
+    try {
+      const url = `${baseUrl}/api/equipamentos`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro ao buscar equipamentos");
+      const json = await resp.json();
+      
+      const listaEquipamentos = json.equipamentos || [];
+      setEquipamentos(listaEquipamentos);
+      
+      // ✅ SEMPRE define o primeiro equipamento quando a lista estiver pronta
+      if (listaEquipamentos.length > 0) {
+        setEquipamento(listaEquipamentos[0]);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar equipamentos:", e);
+      const listaPadrao = ["Pluviometro_01"];
+      setEquipamentos(listaPadrao);
+      setEquipamento(listaPadrao[0]);
+    } finally {
+      setLoadingEquipamentos(false);
+    }
+  }
+
+  // 🔄 NOVO: Aplicar filtro das 24h automaticamente quando equipamento estiver disponível
+  useEffect(() => {
+    if (equipamento && equipamento !== "") {
+      console.log("🎯 Aplicando filtro automático das 24h para:", equipamento);
+      // Pequeno delay para garantir que tudo está carregado
+      setTimeout(() => {
+        calcularPeriodoRapido("24h");
+      }, 100);
+    }
+  }, [equipamento]);
+
+  // Função para converter data para formato do input (YYYY-MM-DDTHH:MM)
+  function toLocalDatetimeString(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
+    
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
-  function formatarParaBanco(datetimeString) {
+  // Função para converter input para formato do banco (YYYY-MM-DD HH:MM:SS)
+  function toDatabaseFormat(datetimeString) {
     if (!datetimeString) return '';
     const date = new Date(datetimeString);
     const year = date.getFullYear();
@@ -95,387 +89,867 @@ function App() {
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}:00`;
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
 
-  async function carregarEquipamentos() {
-    try {
-      const url = `${baseUrl}/api/equipamentos`;
-      const resp = await fetch(url);
-      if (resp.ok) {
-        const json = await resp.json();
-        const lista = json.equipamentos || ["Pluviometro_01"];
-        setEquipamentos(lista);
-        if (lista.length > 0) {
-          setEquipamento(lista[0]);
-        }
-      }
-    } catch (e) {
-      console.error("Erro equipamentos:", e);
-      setEquipamentos(["Pluviometro_01"]);
-      setEquipamento("Pluviometro_01");
+  // 📆 Filtros rápidos
+  function calcularPeriodoRapido(p) {
+    const agora = new Date();
+    const inicio = new Date(agora);
+
+    if (p === "24h") {
+      inicio.setHours(inicio.getHours() - 24);
+    } else if (p === "7d") {
+      inicio.setDate(inicio.getDate() - 7);
+    } else if (p === "30d") {
+      inicio.setDate(inicio.getDate() - 30);
     }
+
+    setDataInicial(toLocalDatetimeString(inicio));
+    setDataFinal(toLocalDatetimeString(agora));
+    setPeriodo(p);
+
+    const inicioBanco = toDatabaseFormat(toLocalDatetimeString(inicio));
+    const finalBanco = toDatabaseFormat(toLocalDatetimeString(agora));
+
+    console.log(`📊 Aplicando filtro ${p}:`, { inicioBanco, finalBanco });
+    carregarComDatas(inicioBanco, finalBanco);
   }
 
-  async function carregarDados() {
+  // 🔄 Carregar da API com datas específicas
+  async function carregarComDatas(inicial, final) {
     setLoading(true);
     setErro("");
     try {
-      const params = new URLSearchParams({
-        equipamento: equipamento,
-        data_inicial: formatarParaBanco(filtroInicio),
-        data_final: formatarParaBanco(filtroFim)
-      });
+      const params = new URLSearchParams({ equipamento });
+      if (inicial) params.append("data_inicial", inicial);
+      if (final) params.append("data_final", final);
 
       const url = `${baseUrl}/api/series?${params.toString()}`;
+
       const resp = await fetch(url);
-      
-      if (!resp.ok) throw new Error("Erro na API");
-      
+      if (!resp.ok) throw new Error("Erro ao buscar dados");
       const json = await resp.json();
-      setDados(json.dados || []);
+
+      const lista = json.dados || [];
+      setDados(lista);
       setTotalChuva(json.total_chuva || 0);
       
     } catch (e) {
-      setErro("Falha ao carregar dados");
+      setErro("Falha ao carregar dados. Verifique a API.");
       console.error(e);
     } finally {
       setLoading(false);
     }
   }
 
-  // Processar dados para os gráficos
-  const dadosProcessados = useMemo(() => {
-    if (!dados.length) return [];
+  // 🔄 Carregar da API usando os estados atuais
+  async function carregar() {
+    setLoading(true);
+    setErro("");
+    try {
+      const params = new URLSearchParams({ equipamento });
+      
+      const dataInicialBanco = toDatabaseFormat(dataInicial);
+      const dataFinalBanco = toDatabaseFormat(dataFinal);
+      
+      if (dataInicialBanco) params.append("data_inicial", dataInicialBanco);
+      if (dataFinalBanco) params.append("data_final", dataFinalBanco);
 
-    // Agrupar por hora
+      const url = `${baseUrl}/api/series?${params.toString()}`;
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Erro ao buscar dados");
+      const json = await resp.json();
+
+      const lista = json.dados || [];
+      setDados(lista);
+      setTotalChuva(json.total_chuva || 0);
+    } catch (e) {
+      setErro("Falha ao carregar dados. Verifique a API.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function limparFiltro() {
+    setDataInicial("");
+    setDataFinal("");
+    setPeriodo("");
+    // Ao limpar, volta para as 24h
+    setTimeout(() => {
+      calcularPeriodoRapido("24h");
+    }, 100);
+  }
+
+  // 🧮 Agrupar por hora - USA O HORÁRIO EXATO DO BANCO
+  function agruparPorHora(lista) {
     const mapa = {};
-    dados.forEach(item => {
-      const hora = new Date(item.registro).getHours().toString().padStart(2, '0') + ':00';
-      if (!mapa[hora]) {
-        mapa[hora] = {
-          hora,
-          temp: 0,
-          umid: 0,
-          chuva: 0,
-          count: 0
+
+    lista.forEach((d) => {
+      const registro = d.registro;
+      
+      let horaStr;
+      if (registro.includes('T')) {
+        horaStr = registro.slice(0, 13) + ":00:00";
+      } else {
+        horaStr = registro.slice(0, 13) + ":00:00";
+      }
+
+      if (!mapa[horaStr]) {
+        mapa[horaStr] = {
+          count: 0,
+          somaTemp: 0,
+          somaUmid: 0,
+          somaChuva: 0,
+          timestamp: new Date(registro).getTime()
         };
       }
-      mapa[hora].temp += Number(item.temperatura) || 0;
-      mapa[hora].umid += Number(item.umidade) || 0;
-      mapa[hora].chuva += Number(item.chuva) || 0;
-      mapa[hora].count++;
+
+      mapa[horaStr].count++;
+      mapa[horaStr].somaTemp += Number(d.temperatura) || 0;
+      mapa[horaStr].somaUmid += Number(d.umidade) || 0;
+      mapa[horaStr].somaChuva += Number(d.chuva) || 0;
     });
 
-    return Object.values(mapa).map(h => ({
-      hora: h.hora,
-      temp: h.count > 0 ? Number((h.temp / h.count).toFixed(1)) : 0,
-      umid: h.count > 0 ? Number((h.umid / h.count).toFixed(1)) : 0,
-      chuva: Number(h.chuva.toFixed(2)),
-      deltaT: calcularDeltaT(
-        h.count > 0 ? h.temp / h.count : 0,
-        h.count > 0 ? h.umid / h.count : 0
-      )
-    })).sort((a, b) => a.hora.localeCompare(b.hora));
-  }, [dados]);
+    const horasOrdenadas = Object.keys(mapa).sort((a, b) => 
+      mapa[a].timestamp - mapa[b].timestamp
+    );
 
-  // Funções de filtro rápido
-  const aplicarFiltroRapido = (periodo) => {
-    const agora = new Date();
-    const inicio = new Date();
+    return horasOrdenadas.map((h) => ({
+      hora: h,
+      timestamp: mapa[h].timestamp,
+      temperatura: Number((mapa[h].somaTemp / mapa[h].count).toFixed(2)),
+      umidade: Number((mapa[h].somaUmid / mapa[h].count).toFixed(2)),
+      chuva: Number(mapa[h].somaChuva.toFixed(2)),
+    }));
+  }
 
-    switch (periodo) {
-      case "24h":
-        inicio.setHours(inicio.getHours() - 24);
-        break;
-      case "7d":
-        inicio.setDate(inicio.getDate() - 7);
-        break;
-      case "30d":
-        inicio.setDate(inicio.getDate() - 30);
-        break;
+  const agrupados = agruparPorHora(dados);
+  const labels = agrupados.map(() => "");
+  const temperatura = agrupados.map((d) => d.temperatura);
+  const umidade = agrupados.map((d) => d.umidade);
+  const chuva = agrupados.map((d) => d.chuva);
+
+  // Configurações dos gráficos para dark mode
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+        labels: {
+          color: '#e2e8f0'
+        }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#e2e8f0',
+        bodyColor: '#e2e8f0',
+        titleFont: {
+          size: isMobile ? 12 : 14
+        },
+        bodyFont: {
+          size: isMobile ? 11 : 13
+        },
+        callbacks: {
+          title: (context) => {
+            const index = context[0].dataIndex;
+            const dataOriginal = agrupados[index];
+            return new Date(dataOriginal.hora).toLocaleString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          },
+          label: (context) => {
+            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        display: false,
+        grid: {
+          display: false
+        }
+      },
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(148, 163, 184, 0.2)'
+        },
+        ticks: {
+          color: '#94a3b8',
+          font: {
+            size: isMobile ? 10 : 12
+          },
+          callback: function(value) {
+            return value.toFixed(2);
+          }
+        }
+      }
+    },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false
     }
-
-    setFiltroInicio(formatarParaInput(inicio));
-    setFiltroFim(formatarParaInput(agora));
   };
 
-  // Exportações
-  const exportarExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(dadosProcessados);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Dados Estação");
-    XLSX.writeFile(wb, "Relatorio_FazendaRP.xlsx");
+  const barOptions = {
+    ...chartOptions,
+    scales: {
+      ...chartOptions.scales,
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(148, 163, 184, 0.2)'
+        },
+        ticks: {
+          color: '#94a3b8',
+          font: {
+            size: isMobile ? 10 : 12
+          },
+          callback: function(value) {
+            return value.toFixed(2);
+          }
+        }
+      }
+    }
   };
 
-  const exportarPDF = async () => {
-    const canvas = await html2canvas(dashboardRef.current, { scale: 2, backgroundColor: '#0f172a' });
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, (canvas.height * 210) / canvas.width);
-    pdf.save("Dashboard_FazendaRP.pdf");
+  // Estilos DARK MODE com tema azul - OTIMIZADO
+  const styles = {
+    container: {
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+      padding: isMobile ? "10px" : "20px",
+      fontFamily: "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      color: "#e2e8f0"
+    },
+    header: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "20px",
+      padding: isMobile ? "20px" : "30px",
+      marginBottom: isMobile ? "20px" : "30px",
+      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
+      backdropFilter: "blur(10px)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    headerContent: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      justifyContent: "space-between",
+      alignItems: isMobile ? "flex-start" : "center",
+      gap: "20px",
+    },
+    titleSection: {
+      display: "flex",
+      alignItems: "center",
+      gap: "15px",
+    },
+    logo: {
+      fontSize: isMobile ? "2rem" : "2.5rem",
+      background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+    },
+    title: {
+      margin: 0,
+      fontSize: isMobile ? "1.5rem" : "2rem",
+      fontWeight: "700",
+      background: "linear-gradient(135deg, #60a5fa, #3b82f6)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+    },
+    subtitle: {
+      margin: "8px 0 0 0",
+      color: "#94a3b8",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+      fontWeight: "400",
+    },
+    statsGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+      gap: "15px",
+      width: isMobile ? "100%" : "auto",
+    },
+    statCard: {
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      padding: isMobile ? "15px" : "20px",
+      borderRadius: "15px",
+      color: "white",
+      textAlign: "center",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
+    },
+    statValue: {
+      fontSize: isMobile ? "1.3rem" : "1.6rem",
+      fontWeight: "bold",
+      marginBottom: "5px",
+    },
+    statLabel: {
+      fontSize: isMobile ? "0.7rem" : "0.8rem",
+      opacity: 0.9,
+    },
+    card: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "15px",
+      padding: isMobile ? "20px" : "25px",
+      marginBottom: isMobile ? "20px" : "25px",
+      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
+      backdropFilter: "blur(10px)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    cardTitle: {
+      margin: "0 0 20px 0",
+      fontSize: isMobile ? "1.2rem" : "1.3rem",
+      fontWeight: "600",
+      color: "#e2e8f0",
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+    },
+    formGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+      gap: "15px",
+      marginBottom: "20px",
+    },
+    formGroup: {
+      display: "flex",
+      flexDirection: "column",
+    },
+    label: {
+      marginBottom: "8px",
+      fontWeight: "500",
+      color: "#cbd5e1",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+    },
+    input: {
+      padding: "12px",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      backgroundColor: "#1e293b",
+      color: "#e2e8f0",
+      transition: "all 0.3s ease",
+    },
+    select: {
+      padding: "12px",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      backgroundColor: "#1e293b",
+      color: "#e2e8f0",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+    },
+    buttonGroup: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: "12px",
+    },
+    primaryButton: {
+      padding: "12px 24px",
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      color: "white",
+      border: "none",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
+    },
+    secondaryButton: {
+      padding: "12px 24px",
+      background: "transparent",
+      color: "#94a3b8",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      fontWeight: "600",
+      cursor: "pointer",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+    },
+    quickFilters: {
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: "12px",
+      flexWrap: "wrap",
+    },
+    quickFilterButton: {
+      padding: "12px 18px",
+      background: "transparent",
+      border: "1px solid #475569",
+      borderRadius: "8px",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      cursor: "pointer",
+      textAlign: "center",
+      flex: isMobile ? "1" : "none",
+      transition: "all 0.3s ease",
+      fontWeight: "500",
+      color: "#94a3b8",
+    },
+    quickFilterActive: {
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      color: "white",
+      borderColor: "transparent",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
+    },
+    loading: {
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      padding: "20px",
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "10px",
+      color: "#94a3b8",
+      justifyContent: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    spinner: {
+      width: "20px",
+      height: "20px",
+      border: "2px solid #475569",
+      borderTop: "2px solid #3b82f6",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite",
+    },
+    error: {
+      padding: "16px",
+      background: "rgba(239, 68, 68, 0.1)",
+      border: "1px solid #dc2626",
+      borderRadius: "10px",
+      color: "#fca5a5",
+      textAlign: "center",
+      fontSize: isMobile ? "0.9rem" : "1rem",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+    },
+    emptyState: {
+      textAlign: "center",
+      padding: "50px 20px",
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "15px",
+      color: "#94a3b8",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    tabsContainer: {
+      display: "flex",
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "12px",
+      padding: "5px",
+      marginBottom: "20px",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    },
+    tab: {
+      flex: 1,
+      padding: "12px 16px",
+      textAlign: "center",
+      borderRadius: "8px",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+      fontWeight: "500",
+      fontSize: isMobile ? "0.85rem" : "0.9rem",
+      color: "#94a3b8",
+    },
+    activeTab: {
+      background: "linear-gradient(135deg, #1e40af, #3b82f6)",
+      color: "white",
+      boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
+    },
+    chartCard: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "15px",
+      padding: isMobile ? "15px 20px" : "20px 25px",
+      boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
+      height: isMobile ? "380px" : "420px",
+      marginBottom: isMobile ? "20px" : "25px",
+      minHeight: "380px",
+      border: "1px solid rgba(100, 116, 139, 0.2)",
+      display: "flex",
+      flexDirection: "column",
+    },
+    chartHeader: {
+      marginBottom: "12px",
+      textAlign: "center",
+      flexShrink: 0,
+    },
+    chartTitle: {
+      margin: 0,
+      fontSize: isMobile ? "1.1rem" : "1.2rem",
+      fontWeight: "600",
+      color: "#e2e8f0",
+    },
+    chartContainer: {
+      flex: 1,
+      minHeight: 0,
+      position: "relative",
+    },
+    chartsSection: {
+      marginBottom: isMobile ? "20px" : "30px",
+    },
+    summaryCard: {
+      background: "rgba(30, 41, 59, 0.8)",
+      borderRadius: "15px",
+      padding: isMobile ? "20px" : "25px",
+      marginBottom: isMobile ? "20px" : "25px",
+      boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+      backdropFilter: "blur(10px)",
+      border: "1px solid rgba(100, 116, 139, 0.2)"
+    }
   };
 
-  // Último dado
-  const ultimoDado = dadosProcessados.length > 0 ? dadosProcessados[dadosProcessados.length - 1] : null;
+  // Função para renderizar o gráfico ativo com cores azuis
+  const renderActiveChart = () => {
+    switch (activeTab) {
+      case "chuva":
+        return (
+          <Bar
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Chuva por hora (mm)",
+                  data: chuva,
+                  backgroundColor: "rgba(96, 165, 250, 0.8)",
+                  borderColor: "#60a5fa",
+                  borderWidth: 2,
+                  borderRadius: 6,
+                },
+              ],
+            }}
+            options={barOptions}
+          />
+        );
+      case "temperatura":
+        return (
+          <Line
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Temperatura (°C)",
+                  data: temperatura,
+                  borderColor: "#f87171",
+                  backgroundColor: "rgba(248, 113, 113, 0.1)",
+                  borderWidth: 3,
+                  tension: 0.4,
+                  fill: true,
+                },
+              ],
+            }}
+            options={chartOptions}
+          />
+        );
+      case "umidade":
+        return (
+          <Line
+            data={{
+              labels,
+              datasets: [
+                {
+                  label: "Umidade (%)",
+                  data: umidade,
+                  borderColor: "#60a5fa",
+                  backgroundColor: "rgba(96, 165, 250, 0.1)",
+                  borderWidth: 3,
+                  tension: 0.4,
+                  fill: true,
+                },
+              ],
+            }}
+            options={chartOptions}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div style={{ width: '100%', padding: '20px', background: '#0f172a', minHeight: '100vh', color: 'white', fontFamily: 'sans-serif' }}>
-      <div ref={dashboardRef} style={{ padding: '10px' }}>
-        
-        {/* CABEÇALHO - Código 1 Style */}
-        <header style={{ maxWidth: '1100px', margin: '0 auto 20px auto', display: 'flex', alignItems: 'center', gap: '20px', padding: '15px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
-          <div style={{ background: 'white', padding: '5px', borderRadius: '8px' }}>
-            <div style={{ fontSize: '24px' }}>🌦️</div>
-          </div>
+    <div style={styles.container}>
+      {/* 🎯 HEADER ELEGANTE - DARK MODE */}
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '20px' }}>Fazenda Ribeirão Preto</h1>
-            <p style={{ margin: 0, color: '#3b82f6', fontSize: '14px', fontWeight: 'bold' }}>Estação Meteorológica - Perdizes/MG</p>
+            <div style={styles.titleSection}>
+              <div style={styles.logo}>🌦️</div>
+              <div>
+                <h1 style={styles.title}>Fazenda Ribeirão Preto</h1>
+                <p style={styles.subtitle}>Monitoramento Meteorológico</p>
+              </div>
+            </div>
           </div>
-          <select 
-            value={equipamento} 
-            onChange={(e) => setEquipamento(e.target.value)} 
-            style={{ 
-              marginLeft: 'auto', 
-              background: '#0f172a', 
-              color: 'white', 
-              border: '1px solid #334155', 
-              padding: '8px', 
-              borderRadius: '6px',
-              minWidth: '150px'
-            }}
+          
+          {!loading && !erro && agrupados.length > 0 && (
+            <div style={styles.statsGrid}>
+              <div style={styles.statCard}>
+                <div style={styles.statValue}>{totalChuva.toFixed(2)} mm</div>
+                <div style={styles.statLabel}>Total de Chuva</div>
+              </div>
+              {!isMobile && (
+                <div style={styles.statCard}>
+                  <div style={styles.statValue}>{equipamento}</div>
+                  <div style={styles.statLabel}>Equipamento</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* 🎛️ PAINEL DE CONTROLE - DARK MODE */}
+      <div style={styles.card}>
+        <h3 style={styles.cardTitle}>⚙️ Configurações</h3>
+        
+        <div style={styles.formGrid}>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>📡 Equipamento</label>
+            {loadingEquipamentos ? (
+              <div style={styles.loading}>
+                <div style={styles.spinner}></div>
+                <span>Carregando equipamentos...</span>
+              </div>
+            ) : (
+              <select
+                style={styles.select}
+                value={equipamento}
+                onChange={(e) => setEquipamento(e.target.value)}
+                onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+                onBlur={(e) => e.target.style.borderColor = "#475569"}
+              >
+                <option value="">Selecione um equipamento</option>
+                {equipamentos.map((eqp) => (
+                  <option key={eqp} value={eqp}>
+                    {eqp}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>📅 Data Inicial</label>
+            <input
+              type="datetime-local"
+              style={styles.input}
+              value={dataInicial}
+              onChange={(e) => setDataInicial(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>📅 Data Final</label>
+            <input
+              type="datetime-local"
+              style={styles.input}
+              value={dataFinal}
+              onChange={(e) => setDataFinal(e.target.value)}
+              onFocus={(e) => e.target.style.borderColor = "#60a5fa"}
+              onBlur={(e) => e.target.style.borderColor = "#475569"}
+            />
+          </div>
+        </div>
+
+        <div style={styles.buttonGroup}>
+          <button 
+            style={styles.primaryButton} 
+            onClick={() => carregar()}
+            onMouseOver={(e) => e.target.style.transform = "translateY(-2px)"}
+            onMouseOut={(e) => e.target.style.transform = "translateY(0)"}
+            disabled={!equipamento}
           >
-            {equipamentos.map(eq => <option key={eq} value={eq}>{eq}</option>)}
-          </select>
-        </header>
-
-        {/* CARDS RESUMO */}
-        <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Última Comunicação</p>
-            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: 'white' }}>{ultimoDado?.hora || '--'}</h3>
-          </div>
-          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Temperatura Atual</p>
-            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: '#ef4444' }}>{ultimoDado ? `${ultimoDado.temp}°C` : '--'}</h3>
-          </div>
-          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Umidade Atual</p>
-            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: '#10b981' }}>{ultimoDado ? `${ultimoDado.umid}%` : '--'}</h3>
-          </div>
-          <div style={{ background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid '#334155' }}>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: '10px', textTransform: 'uppercase' }}>Chuva no Período</p>
-            <h3 style={{ margin: '5px 0 0 0', fontSize: '18px', color: '#3b82f6' }}>{totalChuva.toFixed(1)}mm</h3>
-          </div>
+            🔍 Aplicar Filtros
+          </button>
+          <button 
+            style={styles.secondaryButton} 
+            onClick={limparFiltro}
+            onMouseOver={(e) => e.target.style.backgroundColor = "#374151"}
+            onMouseOut={(e) => e.target.style.backgroundColor = "transparent"}
+          >
+            🗑️ Limpar Filtros
+          </button>
         </div>
+      </div>
 
-        {/* FILTROS E EXPORTAÇÃO */}
-        <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input 
-                type="datetime-local" 
-                value={filtroInicio} 
-                onChange={(e) => setFiltroInicio(e.target.value)} 
-                style={{ 
-                  background: '#0f172a', 
-                  border: '1px solid #334155', 
-                  color: 'white', 
-                  padding: '8px', 
-                  borderRadius: '6px', 
-                  fontSize: '12px' 
-                }} 
-              />
-              <input 
-                type="datetime-local" 
-                value={filtroFim} 
-                onChange={(e) => setFiltroFim(e.target.value)} 
-                style={{ 
-                  background: '#0f172a', 
-                  border: '1px solid #334155', 
-                  color: 'white', 
-                  padding: '8px', 
-                  borderRadius: '6px', 
-                  fontSize: '12px' 
-                }} 
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => aplicarFiltroRapido("24h")}
-                style={{ 
-                  background: '#334155', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '10px 15px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontSize: '12px', 
-                  fontWeight: 'bold' 
-                }}
-              >
-                24h
-              </button>
-              <button 
-                onClick={() => aplicarFiltroRapido("7d")}
-                style={{ 
-                  background: '#334155', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '10px 15px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontSize: '12px', 
-                  fontWeight: 'bold' 
-                }}
-              >
-                7 Dias
-              </button>
-              <button 
-                onClick={() => aplicarFiltroRapido("30d")}
-                style={{ 
-                  background: '#334155', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '10px 15px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontSize: '12px', 
-                  fontWeight: 'bold' 
-                }}
-              >
-                30 Dias
-              </button>
-            </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
-              <button 
-                onClick={exportarExcel}
-                style={{ 
-                  background: '#10b981', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '10px 15px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontSize: '12px', 
-                  fontWeight: 'bold' 
-                }}
-              >
-                📊 Excel
-              </button>
-              <button 
-                onClick={exportarPDF}
-                style={{ 
-                  background: '#3b82f6', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '10px 15px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontSize: '12px', 
-                  fontWeight: 'bold' 
-                }}
-              >
-                📥 PDF
-              </button>
-            </div>
-          </div>
+      {/* ⏱️ FILTROS RÁPIDOS - DARK MODE */}
+      <div style={styles.card}>
+        <h3 style={styles.cardTitle}>⏱️ Período Rápido</h3>
+        <div style={styles.quickFilters}>
+          {["24h", "7d", "30d"].map((p) => (
+            <button
+              key={p}
+              style={{
+                ...styles.quickFilterButton,
+                ...(periodo === p ? styles.quickFilterActive : {})
+              }}
+              onClick={() => calcularPeriodoRapido(p)}
+              onMouseOver={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "#374151")}
+              onMouseOut={(e) => !styles.quickFilterActive.backgroundColor && (e.target.style.backgroundColor = "transparent")}
+              disabled={!equipamento}
+            >
+              {p === "24h" && "⏰ Últimas 24h"}
+              {p === "7d" && "📅 Última Semana"}
+              {p === "30d" && "📊 Último Mês"}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* MENSAGENS */}
+      {/* 📊 STATUS E ERROS - DARK MODE */}
+      <div>
+        {loading && periodo === "24h" && (
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <span>Carregando dados das últimas 24h...</span>
+          </div>
+        )}
+        
+        {loading && periodo !== "24h" && (
+          <div style={styles.loading}>
+            <div style={styles.spinner}></div>
+            <span>Carregando dados meteorológicos...</span>
+          </div>
+        )}
+        
         {erro && (
-          <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', padding: '15px', background: '#7f1d1d', color: '#fca5a5', borderRadius: '8px' }}>
+          <div style={styles.error}>
             ⚠️ {erro}
           </div>
         )}
 
-        {loading && (
-          <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-            Carregando dados...
+        {!loading && !erro && agrupados.length === 0 && equipamento && (
+          <div style={styles.emptyState}>
+            <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📈</div>
+            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Nenhum dado encontrado</h3>
+            <p style={{ margin: 0 }}>Não há dados disponíveis para os filtros selecionados.</p>
           </div>
         )}
 
-        {/* GRÁFICO PRINCIPAL */}
-        {dadosProcessados.length > 0 && !loading && (
-          <>
-            <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', background: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' }}>
-              <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', borderLeft: '4px solid #3b82f6', paddingLeft: '15px' }}>Monitoramento Meteorológico Local</h2>
-              <div style={{ width: '100%', height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={dadosProcessados}>
-                    <CartesianGrid stroke="#334155" vertical={false} strokeDasharray="3 3" />
-                    <XAxis dataKey="hora" stroke="#94a3b8" fontSize={10} />
-                    <YAxis yAxisId="left" stroke="#94a3b8" width={80} label={{ value: '°C / % Umidade', angle: -90, position: 'insideLeft', style: { fill: '#94a3b8' } }} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" width={80} label={{ value: 'Chuva (mm)', angle: -90, position: 'insideRight', style: { fill: '#3b82f6' } }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155' }} />
-                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                    <Bar yAxisId="right" dataKey="chuva" name="Chuva" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
-                    <Line yAxisId="left" type="monotone" dataKey="temp" name="Temp Méd" stroke="#ef4444" strokeWidth={3} dot={false} />
-                    <Line yAxisId="left" type="monotone" dataKey="umid" name="Umid Méd" stroke="#10b981" strokeWidth={3} dot={false} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* PREVISÃO E JANELAS */}
-            <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', padding: '20px', borderRadius: '16px', border: '2px solid #334155', background: 'rgba(30, 41, 59, 0.5)' }}>
-              <h2 style={{ fontSize: '14px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '15px' }}>Previsão Climática e Recomendações</h2>
-              
-              <div style={{ marginBottom: '20px', padding: '15px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', border: '1px solid #10b981' }}>
-                <h3 style={{ fontSize: '12px', color: '#10b981', margin: '0 0 10px 0' }}>✅ Próximas Janelas Ideais para Pulverização (Previsão)</h3>
-                <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
-                  {janelasIdeais.map((j, i) => (
-                    <div key={i} style={{ minWidth: '105px', background: '#1e293b', padding: '10px', borderRadius: '8px', border: '1px solid #334155', textAlign: 'center' }}>
-                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>{j.dia}</span>
-                      <span style={{ fontSize: '14px', fontWeight: 'bold', display: 'block' }}>{j.hora}</span>
-                      <span style={{ fontSize: '11px', color: '#10b981' }}>ΔT: {j.deltaT}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px' }}>
-                {previsao.map((p, i) => (
-                  <div key={i} style={{ background: '#1e293b', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid #334155' }}>
-                    <span style={{ fontSize: '10px', color: '#3b82f6', fontWeight: 'bold' }}>{p.data}</span>
-                    <div style={{ margin: '5px 0', fontSize: '13px' }}>{p.max}°|{p.min}°</div>
-                    <span style={{ fontSize: '9px', color: '#94a3b8' }}>💧{p.probChuva}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* GRÁFICO DELTA T */}
-            <div style={{ maxWidth: '1100px', margin: '0 auto', background: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' }}>
-              <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', borderLeft: '4px solid #facc15', paddingLeft: '15px' }}>Janela para aplicação (Delta T)</h2>
-              <div style={{ width: '100%', height: 250 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dadosProcessados}>
-                    <CartesianGrid stroke="#334155" vertical={false} />
-                    <XAxis dataKey="hora" stroke="#94a3b8" fontSize={10} />
-                    <YAxis stroke="#94a3b8" domain={[0, 15]} width={40} />
-                    <ReferenceArea y1={0} y2={2} fill="#facc15" fillOpacity={0.2} label={{ value: 'Atenção', fill: '#facc15', fontSize: 10 }} />
-                    <ReferenceArea y1={2} y2={8} fill="#10b981" fillOpacity={0.2} label={{ value: 'Ideal', fill: '#10b981', fontSize: 10 }} />
-                    <ReferenceArea y1={8} y2={10} fill="#facc15" fillOpacity={0.2} />
-                    <ReferenceArea y1={10} y2={15} fill="#ef4444" fillOpacity={0.2} label={{ value: 'Perigo', fill: '#ef4444', fontSize: 10 }} />
-                    <Area type="monotone" dataKey="deltaT" stroke="#f8fafc" strokeWidth={3} fill="transparent" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* SEM DADOS */}
-        {!loading && dadosProcessados.length === 0 && equipamento && !erro && (
-          <div style={{ maxWidth: '1100px', margin: '0 auto', background: '#1e293b', padding: '40px', borderRadius: '16px', border: '1px solid #334155', textAlign: 'center', color: '#94a3b8' }}>
-            <div style={{ fontSize: '48px', marginBottom: '20px' }}>📈</div>
-            <h3 style={{ color: '#e2e8f0' }}>Nenhum dado encontrado</h3>
-            <p>Não há dados disponíveis para o período selecionado.</p>
+        {!equipamento && !loadingEquipamentos && (
+          <div style={styles.emptyState}>
+            <div style={{ fontSize: "4rem", marginBottom: "15px" }}>📡</div>
+            <h3 style={{ marginBottom: "10px", color: "#e2e8f0" }}>Selecione um equipamento</h3>
+            <p style={{ margin: 0 }}>Escolha um equipamento da lista para visualizar os dados.</p>
           </div>
         )}
       </div>
+
+      {/* 📈 GRÁFICOS COM ABAS - DARK MODE OTIMIZADO */}
+      {agrupados.length > 0 && (
+        <div style={styles.chartsSection}>
+          {/* ABAS DE NAVEGAÇÃO */}
+          <div style={styles.tabsContainer}>
+            {[
+              { id: "chuva", label: "🌧️ Chuva", emoji: "🌧️" },
+              { id: "temperatura", label: "🌡️ Temperatura", emoji: "🌡️" },
+              { id: "umidade", label: "💧 Umidade", emoji: "💧" }
+            ].map((tab) => (
+              <div
+                key={tab.id}
+                style={{
+                  ...styles.tab,
+                  ...(activeTab === tab.id ? styles.activeTab : {})
+                }}
+                onClick={() => setActiveTab(tab.id)}
+                onMouseOver={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "#374151")}
+                onMouseOut={(e) => activeTab !== tab.id && (e.target.style.backgroundColor = "transparent")}
+              >
+                {isMobile ? tab.emoji : tab.label}
+              </div>
+            ))}
+          </div>
+
+          {/* GRÁFICO ATIVO - LAYOUT OTIMIZADO */}
+          <div style={styles.chartCard}>
+            <div style={styles.chartHeader}>
+              <h3 style={styles.chartTitle}>
+                {activeTab === "chuva" && "🌧️ Precipitação por Hora (mm)"}
+                {activeTab === "temperatura" && "🌡️ Temperatura (°C)"}
+                {activeTab === "umidade" && "💧 Umidade Relativa (%)"}
+              </h3>
+            </div>
+            <div style={styles.chartContainer}>
+              {renderActiveChart()}
+            </div>
+          </div>
+
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO - MODIFICADO */}
+          <div style={styles.summaryCard}>
+            <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
+            <div style={{ 
+              background: "linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1))", 
+              padding: "20px", 
+              borderRadius: "12px",
+              fontSize: isMobile ? "0.85rem" : "0.95rem",
+              border: "1px solid rgba(59, 130, 246, 0.2)",
+              color: "#cbd5e1"
+            }}>
+              {agrupados.length > 0 && (
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                  gap: "15px" 
+                }}>
+                  <div><strong>📡 Equipamento:</strong> {equipamento}</div>
+                  <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+          input[type="datetime-local"] {
+            font-size: 16px;
+          }
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        input:focus, select:focus, button:focus {
+          outline: none;
+        }
+
+        button:hover {
+          transform: translateY(-1px);
+        }
+
+        body {
+          background: #0f172a;
+          margin: 0;
+          padding: 0;
+        }
+      `}</style>
     </div>
   );
 }
-
-export default App;
