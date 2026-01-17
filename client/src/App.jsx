@@ -8,7 +8,7 @@ import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 
 // Endereço do seu servidor local (Mudar para o link do Render ao enviar para o dev)
-cconst API_URL = import.meta.env.VITE_API_URL || "https://clima-faz-ribeirao-preto-api.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://clima-faz-ribeirao-preto-api.onrender.com";
 
 const calcularDeltaT = (temp, umid) => {
   if (temp === null || umid === null) return null;
@@ -20,6 +20,23 @@ const calcularDeltaT = (temp, umid) => {
   const termo4 = 0.00391838 * Math.pow(u, 1.5) * Math.atan(0.023101 * u);
   const resultado = t - ((termo1 + termo2) - termo3 + termo4 - 4.686035);
   return parseFloat(resultado.toFixed(2));
+};
+
+// Função para converter data para horário de Brasília
+const paraHorarioBrasilia = (dataString) => {
+  const data = new Date(dataString);
+  // Retorna a data já no formato local (Brasília)
+  return data;
+};
+
+// Função para formatar hora no horário de Brasília
+const formatarHora = (dataString) => {
+  const data = paraHorarioBrasilia(dataString);
+  return data.toLocaleTimeString('pt-BR', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo'
+  });
 };
 
 function App() {
@@ -38,7 +55,9 @@ function App() {
   // --- 1. INICIALIZAÇÃO ---
   useEffect(() => {
     const agora = new Date();
-    setFiltroInicio(new Date(agora.getTime() - 86400000).toISOString());
+    // Ajustar para horário de Brasília
+    const inicioBrasilia = new Date(agora.getTime() - 86400000);
+    setFiltroInicio(inicioBrasilia.toISOString());
     setFiltroFim(agora.toISOString());
 
     fetch(`${API_URL}/equipamentos`)
@@ -55,7 +74,7 @@ function App() {
       .then(res => res.json())
       .then(data => {
         const dias = data.daily.time.map((time, index) => ({
-          data: new Date(time).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' }),
+          data: new Date(time).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', timeZone: 'America/Sao_Paulo' }),
           max: data.daily.temperature_2m_max[index],
           min: data.daily.temperature_2m_min[index],
           probChuva: data.daily.precipitation_probability_max[index]
@@ -66,7 +85,11 @@ function App() {
         data.hourly.time.forEach((time, index) => {
           const dt = calcularDeltaT(data.hourly.temperature_2m[index], data.hourly.relative_humidity_2m[index]);
           if (dt >= 2 && dt <= 8 && recomendacoes.length < 5 && new Date(time) > new Date()) {
-            recomendacoes.push({ dia: new Date(time).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }), hora: new Date(time).getHours() + ':00', deltaT: dt });
+            recomendacoes.push({ 
+              dia: new Date(time).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', timeZone: 'America/Sao_Paulo' }), 
+              hora: new Date(time).getHours() + ':00', 
+              deltaT: dt 
+            });
           }
         });
         setJanelasIdeais(recomendacoes);
@@ -77,34 +100,56 @@ function App() {
   useEffect(() => {
     if (!equipSelecionado) return;
     setCarregando(true);
-    const params = new URLSearchParams({ equipamento: equipSelecionado, data_inicial: filtroInicio, data_final: filtroFim });
+    const params = new URLSearchParams({ 
+      equipamento: equipSelecionado, 
+      data_inicial: filtroInicio, 
+      data_final: filtroFim 
+    });
 
     fetch(`${API_URL}/series?${params}`)
       .then(res => res.json())
       .then(resBanco => {
         if (resBanco?.dados) {
-          const formatado = resBanco.dados.map(item => ({
-            timestamp: new Date(item.registro).getTime(),
-            hora: new Date(item.registro).getHours().toString().padStart(2, '0') + ':00',
-            temp: Number(item.temperatura) || 0,
-            umid: Number(item.umidade) || 0,
-            chuva: Number(item.chuva) || 0,
-            deltaT: calcularDeltaT(Number(item.temperatura), Number(item.umidade))
-          }));
+          const formatado = resBanco.dados.map(item => {
+            const dataBrasilia = paraHorarioBrasilia(item.registro);
+            return {
+              timestamp: dataBrasilia.getTime(),
+              hora: formatarHora(item.registro),
+              horaCompleta: dataBrasilia.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+              temp: Number(item.temperatura) || 0,
+              umid: Number(item.umidade) || 0,
+              chuva: Number(item.chuva) || 0,
+              deltaT: calcularDeltaT(Number(item.temperatura), Number(item.umidade))
+            };
+          });
           setDataFull(formatado);
         }
         setCarregando(false);
-      }).catch(() => setCarregando(false));
+      }).catch(err => {
+        console.error("Erro ao buscar séries:", err);
+        setCarregando(false);
+      });
   }, [equipSelecionado, filtroInicio, filtroFim]);
 
   const { dadosGrafico, somaChuvaTotal, ultimoDado } = useMemo(() => {
     if (dataFull.length === 0) return { dadosGrafico: [], somaChuvaTotal: 0 };
-    return { dadosGrafico: dataFull, somaChuvaTotal: dataFull.reduce((acc, curr) => acc + curr.chuva, 0), ultimoDado: dataFull[dataFull.length - 1] };
+    return { 
+      dadosGrafico: dataFull, 
+      somaChuvaTotal: dataFull.reduce((acc, curr) => acc + curr.chuva, 0), 
+      ultimoDado: dataFull[dataFull.length - 1] 
+    };
   }, [dataFull]);
 
   // --- 3. EXPORTAÇÕES ---
   const exportarExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(dataFull);
+    const dadosExport = dataFull.map(item => ({
+      'Data/Hora': item.horaCompleta,
+      'Temperatura (°C)': item.temp,
+      'Umidade (%)': item.umid,
+      'Chuva (mm)': item.chuva,
+      'Delta T': item.deltaT
+    }));
+    const ws = XLSX.utils.json_to_sheet(dadosExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Dados Estação");
     XLSX.writeFile(wb, "Relatorio_FazendaRP.xlsx");
@@ -143,7 +188,7 @@ function App() {
           <Card title="Chuva no Período" value={`${somaChuvaTotal.toFixed(1)}mm`} color="#3b82f6" />
         </div>
 
-        {/* FILTROS E EXPORTAÇÃO (RESTAURADOS) */}
+        {/* FILTROS E EXPORTAÇÃO */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', background: '#1e293b', padding: '15px', borderRadius: '12px', border: '1px solid #334155' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -162,7 +207,7 @@ function App() {
           </div>
         </div>
 
-        {/* GRÁFICO PRINCIPAL COM TÍTULOS NOS EIXOS */}
+        {/* GRÁFICO PRINCIPAL */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', background: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', borderLeft: '4px solid #3b82f6', paddingLeft: '15px' }}>Monitoramento Meteorológico Local</h2>
           <div style={{ width: '100%', height: 400 }}>
@@ -182,7 +227,7 @@ function App() {
           </div>
         </div>
 
-        {/* SEÇÃO DE PREVISÃO E JANELAS (RESTABELECIDA COMPLETA) */}
+        {/* SEÇÃO DE PREVISÃO E JANELAS */}
         <div style={{ maxWidth: '1100px', margin: '0 auto 25px auto', padding: '20px', borderRadius: '16px', border: '2px solid #334155', background: 'rgba(30, 41, 59, 0.5)' }}>
            <h2 style={{ fontSize: '14px', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '15px' }}>Previsão Climática e Recomendações</h2>
            
@@ -212,7 +257,7 @@ function App() {
           </div>
         </div>
 
-        {/* GRÁFICO DELTA T COM CORES DE ZONA (RESTAURADO) */}
+        {/* GRÁFICO DELTA T */}
         <div style={{ maxWidth: '1100px', margin: '0 auto', background: '#1e293b', padding: '25px', borderRadius: '16px', border: '1px solid #334155' }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', borderLeft: '4px solid #facc15', paddingLeft: '15px' }}>Janela para aplicação (Delta T)</h2>
           <div style={{ width: '100%', height: 250 }}>
@@ -221,7 +266,6 @@ function App() {
                 <CartesianGrid stroke="#334155" vertical={false} />
                 <XAxis dataKey="hora" stroke="#94a3b8" fontSize={10} />
                 <YAxis stroke="#94a3b8" domain={[0, 15]} width={40} />
-                {/* Zonas Coloridas Restauradas */}
                 <ReferenceArea y1={0} y2={2} fill="#facc15" fillOpacity={0.2} label={{ value: 'Atenção', fill: '#facc15', fontSize: 10 }} />
                 <ReferenceArea y1={2} y2={8} fill="#10b981" fillOpacity={0.2} label={{ value: 'Ideal', fill: '#10b981', fontSize: 10 }} />
                 <ReferenceArea y1={8} y2={10} fill="#facc15" fillOpacity={0.2} />
