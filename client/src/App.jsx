@@ -228,27 +228,11 @@ export default function App() {
     }));
   }
 
-  // 🧮 FUNÇÃO PARA CALCULAR DELTA T
-  const calcularDeltaT = (temp, umid) => {
-    if (temp === null || umid === null) return null;
-    const t = temp;
-    const u = umid;
-    const termo1 = t * Math.atan(0.151977 * Math.pow(u + 8.313659, 0.5));
-    const termo2 = Math.atan(t + u);
-    const termo3 = Math.atan(u - 1.676331);
-    const termo4 = 0.00391838 * Math.pow(u, 1.5) * Math.atan(0.023101 * u);
-    const resultado = t - ((termo1 + termo2) - termo3 + termo4 - 4.686035);
-    return parseFloat(resultado.toFixed(2));
-  };
-
   const agrupados = agruparPorHora(dados);
   const labels = agrupados.map(() => "");
   const temperatura = agrupados.map((d) => d.temperatura);
   const umidade = agrupados.map((d) => d.umidade);
   const chuva = agrupados.map((d) => d.chuva);
-  
-  // 📊 CALCULAR DELTA T PARA CADA PONTO
-  const deltaT = agrupados.map((d) => calcularDeltaT(d.temperatura, d.umidade));
 
   // Configurações dos gráficos para dark mode
   const chartOptions = {
@@ -343,26 +327,6 @@ export default function App() {
     }
   };
 
-  // 🎨 CORES PARA OS GRÁFICOS
-  const chartColors = {
-    chuva: {
-      border: "#60a5fa",
-      background: "rgba(96, 165, 250, 0.8)"
-    },
-    temperatura: {
-      border: "#f87171",
-      background: "rgba(248, 113, 113, 0.1)"
-    },
-    umidade: {
-      border: "#60a5fa",
-      background: "rgba(96, 165, 250, 0.1)"
-    },
-    deltaT: {
-      border: "#10b981", // Verde para Delta T
-      background: "rgba(16, 185, 129, 0.1)"
-    }
-  };
-
   // Estilos DARK MODE com tema azul - OTIMIZADO
   const styles = {
     container: {
@@ -415,7 +379,7 @@ export default function App() {
     },
     statsGrid: {
       display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
       gap: "15px",
       width: isMobile ? "100%" : "auto",
     },
@@ -426,14 +390,6 @@ export default function App() {
       color: "white",
       textAlign: "center",
       boxShadow: "0 4px 15px rgba(59, 130, 246, 0.3)",
-    },
-    statCardDelta: {
-      background: "linear-gradient(135deg, #047857, #10b981)",
-      padding: isMobile ? "15px" : "20px",
-      borderRadius: "15px",
-      color: "white",
-      textAlign: "center",
-      boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
     },
     statValue: {
       fontSize: isMobile ? "1.3rem" : "1.6rem",
@@ -671,8 +627,8 @@ export default function App() {
                 {
                   label: "Chuva por hora (mm)",
                   data: chuva,
-                  backgroundColor: chartColors.chuva.background,
-                  borderColor: chartColors.chuva.border,
+                  backgroundColor: "rgba(96, 165, 250, 0.8)",
+                  borderColor: "#60a5fa",
                   borderWidth: 2,
                   borderRadius: 6,
                 },
@@ -690,8 +646,8 @@ export default function App() {
                 {
                   label: "Temperatura (°C)",
                   data: temperatura,
-                  borderColor: chartColors.temperatura.border,
-                  backgroundColor: chartColors.temperatura.background,
+                  borderColor: "#f87171",
+                  backgroundColor: "rgba(248, 113, 113, 0.1)",
                   borderWidth: 3,
                   tension: 0.4,
                   fill: true,
@@ -710,8 +666,8 @@ export default function App() {
                 {
                   label: "Umidade (%)",
                   data: umidade,
-                  borderColor: chartColors.umidade.border,
-                  backgroundColor: chartColors.umidade.background,
+                  borderColor: "#60a5fa",
+                  backgroundColor: "rgba(96, 165, 250, 0.1)",
                   borderWidth: 3,
                   tension: 0.4,
                   fill: true,
@@ -721,79 +677,10 @@ export default function App() {
             options={chartOptions}
           />
         );
-      case "deltaT":
-        return (
-          <Line
-            data={{
-              labels,
-              datasets: [
-                {
-                  label: "Delta T (°C)",
-                  data: deltaT,
-                  borderColor: chartColors.deltaT.border,
-                  backgroundColor: chartColors.deltaT.background,
-                  borderWidth: 3,
-                  tension: 0.4,
-                  fill: true,
-                },
-              ],
-            }}
-            options={{
-              ...chartOptions,
-              plugins: {
-                ...chartOptions.plugins,
-                tooltip: {
-                  ...chartOptions.plugins.tooltip,
-                  callbacks: {
-                    ...chartOptions.plugins.tooltip.callbacks,
-                    label: (context) => {
-                      const index = context.dataIndex;
-                      const deltaTValue = deltaT[index];
-                      const temp = temperatura[index];
-                      const umid = umidade[index];
-                      return [
-                        `Delta T: ${deltaTValue.toFixed(2)}°C`,
-                        `Temp: ${temp.toFixed(2)}°C`,
-                        `Umid: ${umid.toFixed(2)}%`
-                      ];
-                    }
-                  }
-                }
-              },
-              scales: {
-                ...chartOptions.scales,
-                y: {
-                  ...chartOptions.scales.y,
-                  title: {
-                    display: true,
-                    text: 'Delta T (°C)',
-                    color: '#94a3b8',
-                    font: {
-                      size: isMobile ? 11 : 13
-                    }
-                  }
-                }
-              }
-            }}
-          />
-        );
       default:
         return null;
     }
   };
-
-  // 📊 CALCULAR VALORES MÉDIOS PARA O RESUMO
-  const temperaturaMedia = agrupados.length > 0 
-    ? (agrupados.reduce((sum, d) => sum + d.temperatura, 0) / agrupados.length).toFixed(2)
-    : "0.00";
-  
-  const umidadeMedia = agrupados.length > 0 
-    ? (agrupados.reduce((sum, d) => sum + d.umidade, 0) / agrupados.length).toFixed(2)
-    : "0.00";
-  
-  const deltaTMedia = agrupados.length > 0 
-    ? (deltaT.reduce((sum, d) => sum + (d || 0), 0) / deltaT.filter(d => d !== null).length).toFixed(2)
-    : "0.00";
 
   return (
     <div style={styles.container}>
@@ -816,14 +703,12 @@ export default function App() {
                 <div style={styles.statValue}>{totalChuva.toFixed(2)} mm</div>
                 <div style={styles.statLabel}>Total de Chuva</div>
               </div>
-              <div style={styles.statCard}>
-                <div style={styles.statValue}>{temperaturaMedia}°C</div>
-                <div style={styles.statLabel}>Temp. Média</div>
-              </div>
-              <div style={styles.statCardDelta}>
-                <div style={styles.statValue}>{deltaTMedia}°C</div>
-                <div style={styles.statLabel}>Delta T Médio</div>
-              </div>
+              {!isMobile && (
+                <div style={styles.statCard}>
+                  <div style={styles.statValue}>{equipamento}</div>
+                  <div style={styles.statLabel}>Equipamento</div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -971,13 +856,12 @@ export default function App() {
       {/* 📈 GRÁFICOS COM ABAS - DARK MODE OTIMIZADO */}
       {agrupados.length > 0 && (
         <div style={styles.chartsSection}>
-          {/* ABAS DE NAVEGAÇÃO - AGORA COM 4 OPÇÕES */}
+          {/* ABAS DE NAVEGAÇÃO */}
           <div style={styles.tabsContainer}>
             {[
               { id: "chuva", label: "🌧️ Chuva", emoji: "🌧️" },
               { id: "temperatura", label: "🌡️ Temperatura", emoji: "🌡️" },
-              { id: "umidade", label: "💧 Umidade", emoji: "💧" },
-              { id: "deltaT", label: "ΔT Delta T", emoji: "ΔT" }
+              { id: "umidade", label: "💧 Umidade", emoji: "💧" }
             ].map((tab) => (
               <div
                 key={tab.id}
@@ -1001,7 +885,6 @@ export default function App() {
                 {activeTab === "chuva" && "🌧️ Precipitação por Hora (mm)"}
                 {activeTab === "temperatura" && "🌡️ Temperatura (°C)"}
                 {activeTab === "umidade" && "💧 Umidade Relativa (%)"}
-                {activeTab === "deltaT" && "ΔT Diferença de Temperatura (°C)"}
               </h3>
             </div>
             <div style={styles.chartContainer}>
@@ -1009,7 +892,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 🗓️ INFORMAÇÕES DO PERÍODO - COM DADOS DE DELTA T */}
+          {/* 🗓️ INFORMAÇÕES DO PERÍODO - MODIFICADO */}
           <div style={styles.summaryCard}>
             <h3 style={styles.cardTitle}>📊 Resumo do Período</h3>
             <div style={{ 
@@ -1023,34 +906,13 @@ export default function App() {
               {agrupados.length > 0 && (
                 <div style={{ 
                   display: "grid", 
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", 
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
                   gap: "15px" 
                 }}>
                   <div><strong>📡 Equipamento:</strong> {equipamento}</div>
-                  <div><strong>📊 Período:</strong> {periodo === "24h" ? "Últimas 24h" : 
-                     periodo === "7d" ? "Última semana" : 
-                     "Último mês"}</div>
-                  <div><strong>🕐 Registros:</strong> {agrupados.length} horas</div>
-                  <div><strong>🌡️ Temp. Média:</strong> {temperaturaMedia}°C</div>
-                  <div><strong>💧 Umidade Média:</strong> {umidadeMedia}%</div>
-                  <div><strong>ΔT Médio:</strong> {deltaTMedia}°C</div>
+                  <div><strong>🕐 Data Inicial:</strong> {new Date(agrupados[0].hora).toLocaleString('pt-BR')}</div>
+                  <div><strong>🕐 Data Final:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleString('pt-BR')}</div>
                   <div><strong>🌧️ Chuva Total:</strong> {totalChuva.toFixed(2)} mm</div>
-                  <div><strong>📅 Início:</strong> {new Date(agrupados[0].hora).toLocaleDateString('pt-BR')}</div>
-                  <div><strong>📅 Fim:</strong> {new Date(agrupados[agrupados.length - 1].hora).toLocaleDateString('pt-BR')}</div>
-                </div>
-              )}
-              {activeTab === "deltaT" && (
-                <div style={{ 
-                  marginTop: "15px", 
-                  padding: "10px", 
-                  background: "rgba(16, 185, 129, 0.1)",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(16, 185, 129, 0.3)"
-                }}>
-                  <small style={{ color: "#10b981" }}>
-                    <strong>💡 Sobre Delta T:</strong> Diferença entre temperatura do bulbo seco e bulbo úmido. 
-                    Valores acima de 8°C indicam condições favoráveis para aplicação de defensivos.
-                  </small>
                 </div>
               )}
             </div>
@@ -1086,11 +948,6 @@ export default function App() {
           background: #0f172a;
           margin: 0;
           padding: 0;
-        }
-
-        /* Estilos para o tooltip do Delta T */
-        .chartjs-tooltip {
-          max-width: 250px;
         }
       `}</style>
     </div>
